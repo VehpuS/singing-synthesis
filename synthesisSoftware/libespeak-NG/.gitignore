@@ -53,7 +53,6 @@ README
 ChangeLog
 
 .deps/
-.libs/
 
 Makefile
 Makefile.in
@@ -193,7 +192,6 @@ phsource/phonemes.stamp
 espeak-ng-data/config
 espeak-ng-data/dictsource
 espeak-ng-data/phsource
-espeak-ng-data/*_dict
 espeak-ng-data/intonations
 espeak-ng-data/phondata
 espeak-ng-data/phondata-manifest

@@ -1,0 +1,8 @@
+/notebooks/singing_synthesis/RealTimeSingingSynthesizer/synthesisSoftware/Sinsy-NG-0.0.1/build/CMakeFiles/install/strip.dir
+/notebooks/singing_synthesis/RealTimeSingingSynthesizer/synthesisSoftware/Sinsy-NG-0.0.1/build/CMakeFiles/install.dir
+/notebooks/singing_synthesis/RealTimeSingingSynthesizer/synthesisSoftware/Sinsy-NG-0.0.1/build/CMakeFiles/list_install_components.dir
+/notebooks/singing_synthesis/RealTimeSingingSynthesizer/synthesisSoftware/Sinsy-NG-0.0.1/build/CMakeFiles/rebuild_cache.dir
+/notebooks/singing_synthesis/RealTimeSingingSynthesizer/synthesisSoftware/Sinsy-NG-0.0.1/build/CMakeFiles/install/local.dir
+/notebooks/singing_synthesis/RealTimeSingingSynthesizer/synthesisSoftware/Sinsy-NG-0.0.1/build/CMakeFiles/sinsyNG.dir
+/notebooks/singing_synthesis/RealTimeSingingSynthesizer/synthesisSoftware/Sinsy-NG-0.0.1/build/CMakeFiles/edit_cache.dir
+/notebooks/singing_synthesis/RealTimeSingingSynthesizer/synthesisSoftware/Sinsy-NG-0.0.1/build/CMakeFiles/sinsy.dir

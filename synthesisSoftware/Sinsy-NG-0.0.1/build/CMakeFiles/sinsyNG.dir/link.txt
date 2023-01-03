@@ -1,0 +1,1 @@
+/usr/bin/c++ --std=gnu++11  -rdynamic CMakeFiles/sinsyNG.dir/bin/sinsy.o -o sinsyNG   -L/notebooks/singing_synthesis/RealTimeSingingSynthesizer/synthesisSoftware/Sinsy-NG-0.0.1/build  -Wl,-rpath,/notebooks/singing_synthesis/RealTimeSingingSynthesizer/synthesisSoftware/Sinsy-NG-0.0.1/build: libsinsy.so -lespeak-ng -lsndfile -lsamplerate 
