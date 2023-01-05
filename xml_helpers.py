@@ -4,18 +4,18 @@ from typing import Any, Dict, List, NamedTuple, Union
 import xml.etree.ElementTree as ET
 
 
-class XmlElement(NamedTuple):
-    '''A virtual element, used to create virtual XML nodes that can be saved'''
+class XmlNode(NamedTuple):
+    '''A helper class to make navigating xml files in python nicer and to create virtual XML nodes that can be saved'''
     tag: str
     attrib: Dict[str, Any]
-    text: str
-    children: List[Union[ET.Element, XmlElement]]
+    text: str | None
+    children: List[XmlNode]
 
     def __getitem__(
         self,
         index: Union[int, slice],  # child index / slice of indices to access
-    ) -> Union[ET.Element, XmlElement, List[Union[ET.Element, XmlElement]]]:
-        ''''''
+    ) -> Union[XmlNode, List[XmlNode]]:
+        '''Get children by index'''
         return self.children[index]
 
     def __iter__(self):
@@ -56,30 +56,49 @@ class XmlElement(NamedTuple):
             i += 1
         raise ValueError
 
+    def tag_index(
+        self,
+        value: str,
+        start: int = 0,
+        stop: int | None = None,
+    ) -> int:
+        children_tags = [c.tag for c in self.children]
+        return children_tags.index(value, start, stop)
+
     def count(self, value):
         '''S.count(value) -> integer -- return number of occurrences of value'''
         return sum(1 for v in self if v is value or v == value)
 
+    def tag_count(
+        self,
+        value: str,
+    ) -> int:
+        children_tags = [c.tag for c in self.children]
+        return children_tags.count(value)
+
     def __len__(self):
         return len(self.children)
-
-
-class XmlNode(NamedTuple):
-    '''A helper class to make navigating xml files in python nicer (for someone unused to the python parser :P)'''
-    el: Union[ET.Element, XmlElement]
-    children: List[XmlNode]
 
     def _get_attribute(
         self,
         k: str,  # Tag name to match children against
     ) -> Union[XmlNode, List[XmlNode]]:
-        relevant_children = [c for c in self.children if c.el.tag == k]
+        relevant_children = [c for c in self.children if c.tag == k]
         if len(relevant_children) == 0:
             raise IndexError()
         if len(relevant_children) == 1:
             return relevant_children[0]
         else:
             return relevant_children
+
+    def find(self, *args, **kwargs):
+        el = ET.fromstring(str(self).replace('\n', ''))
+        found = el.find(*args, **kwargs)
+        return create_xml_node(found) if found is not None else found
+
+    def findall(self, *args, **kwargs):
+        el = ET.fromstring(str(self).replace('\n', ''))
+        return [create_xml_node(fel) for fel in el.findall(*args, **kwargs)]
 
     def __getattr__(
         self,
@@ -112,11 +131,11 @@ class XmlNode(NamedTuple):
 
     def __repr__(self):
         '''A summarized representation of the node'''
-        children_str = (', '.join([c.el.tag for c in self.children])
+        children_str = (', '.join([c.tag for c in self.children])
                         if len(self.children) > 0
-                        else (self.el.text or ""))
-        return f"<{self.el.tag}" + (
-            (">" + children_str + f"</{self.el.tag}>")
+                        else (self.text or ""))
+        return f"<{self.tag}" + (
+            (">" + children_str + f"</{self.tag}>")
             if children_str
             else "/>"
         )
@@ -125,14 +144,14 @@ class XmlNode(NamedTuple):
         '''The full string value of the subtree'''
         children_str = ('\n'.join([str(c) for c in self.children])
                         if len(self.children) > 0
-                        else (self.el.text or ""))
+                        else (self.text or ""))
         attributes_str = " ".join([
             f'{k}="{v}"'
             for k, v in
-            self.el.attrib.items()
+            self.attrib.items()
         ])
-        return f"<{self.el.tag}" + (f" {attributes_str}" if attributes_str else "") + (
-            (">" + "\n" + children_str + "\n" + f"</{self.el.tag}>"))
+        return f"<{self.tag}" + (f" {attributes_str}" if attributes_str else "") + (
+            (">" + "\n" + children_str + "\n" + f"</{self.tag}>"))
 
     def __call__(
         self,
@@ -144,6 +163,21 @@ class XmlNode(NamedTuple):
         contents = str(self).replace('\n', '')
         with open(output_file, 'w') as f:
             f.write(prefix + contents)
+
+    def clone_with_changes(
+        self,
+        new_tag: str | None=None,
+        new_attrib: Dict[str, str] | None=None,
+        new_text: str | None=None,
+        new_children: List[XmlNode] | None=None,
+    ) -> XmlNode:
+        '''Create a new XmlNode instance with changes based on the current one'''
+        return XmlNode(
+            tag=new_tag if new_tag is not None else self.tag,
+            attrib=new_attrib if new_attrib is not None else self.attrib,
+            text=new_text if new_text is not None else self.text,
+            children=new_children if new_children is not None else self.children,
+        )
 
 
 def read_xml_path(
@@ -169,7 +203,12 @@ def create_xml_node(
     '''Convert an XML element into the XmlNode class'''
     root_tag = root.tag
     children: List[XmlNode] = []
-    root_node = XmlNode(root, children)
+    root_node = XmlNode(
+        tag=root.tag,
+        attrib=root.attrib,
+        text=root.text,
+        children=children,
+    )
 
     node_dict: Dict[str, XmlNode] = {}
     node_dict[root_tag] = root_node
@@ -184,7 +223,12 @@ def create_xml_node(
             break
 
         parent_id, el = els_to_convert.pop(0)
-        new_el = XmlNode(el, [])
+        new_el = XmlNode(
+            tag=el.tag,
+            attrib=el.attrib,
+            text=el.text,
+            children=[],
+        )
         node_id = f"{parent_id}-{el.tag}-{iter_num}"
         node_dict[node_id] = new_el
 
@@ -192,7 +236,12 @@ def create_xml_node(
         parent_children = parent_node.children
         parent_children.append(new_el)
 
-        node_dict[parent_id] = XmlNode(parent_node.el, parent_children)
+        node_dict[parent_id] = XmlNode(
+            tag=parent_node.tag,
+            attrib=parent_node.attrib,
+            text=parent_node.text,
+            children=parent_children,
+        )
         els_to_convert.extend([
             _XMLConversionParams(node_id, child_el) for child_el in list(el)
         ])
