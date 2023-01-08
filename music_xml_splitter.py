@@ -15,12 +15,13 @@ class SplitParams(NamedTuple):
     part_name: str
     voice: int | str
     tempo_segment: Tuple[TempoSection, TempoSection | None]
-    chord_level: int
+    chord_lvl: int
+    largest_chord_lvl: int
 
     def get_file_suffix(self) -> str:
         return (f'part_{self.part_idx}_{self.part_name}-'
                 f'voice_{self.voice}-'
-                f'chord_{self.chord_level}-'
+                f'chord_{self.chord_lvl}-'
                 f'pidx_{self.tempo_segment[0].part_child_idx}_'
                 f'midx_{self.tempo_segment[0].measure_child_idx}_'
                 f'tempo_{self.tempo_segment[0].tempo}')
@@ -67,13 +68,22 @@ def create_music_xml_split(
                 first_attributes = merge_attributes_nodes(first_attributes, part_child['attributes'])
             continue
         voice_measure_children: List[XmlNode] = []
-        curr_chord_level = 1
-        for measure_child_idx, measure_child in tqdm(enumerate(part_child.children),
-                                                     "Notes", len(part_child.children)):
-            if measure_child.tag != 'note':
-                # Not a note
+        curr_chord_lvl = 1
+        lyric_before_segment: XmlNode | None = None
+        chord_start_idx = -1
+        for measure_child_idx, measure_child in enumerate(part_child.children):
+            if 'lyric' in measure_child and not found_segment:
+                lyrics = measure_child['lyric']
+                if type(lyrics) == XmlNode:
+                    lyric_before_segment = cast(XmlNode, lyrics)
+                elif len(lyrics) > 0:
+                    lyric_before_segment = cast(List[XmlNode], lyrics)[0]
+
+            if measure_child.tag != 'note' or 'rest' in measure_child:
+                # Not a note / is a rest
                 voice_measure_children.append(measure_child)  # type: ignore
-                curr_chord_level = 0
+                chord_start_idx = measure_child_idx
+                curr_chord_lvl = 0
                 continue
             elif (start_tempo_segment.part_child_idx == part_child_idx and
                   start_tempo_segment.measure_child_idx > measure_child_idx):
@@ -95,16 +105,37 @@ def create_music_xml_split(
 
             # chord detection https://www.w3.org/2021/06/musicxml40/musicxml-reference/elements/chord/
             if 'chord' in measure_child:
-                curr_chord_level += 1
+                curr_chord_lvl += 1
             else:
-                curr_chord_level = 1
+                chord_start_idx = measure_child_idx
+                curr_chord_lvl = 1
             
-            if curr_chord_level == params.chord_level:
-                # TODO: add lyrics for chords missing them
-                # TODO: add lyrics for notes that had lyrics that started before the rhythm change?
+            if curr_chord_lvl == params.chord_lvl:
+                chord_sub_el = part_child.clone_with_changes(
+                    new_children=part_child.children[chord_start_idx: chord_start_idx + params.largest_chord_lvl + 1]
+                ) if chord_start_idx > 0 else None
+                lyric_for_chord = (chord_sub_el.find(".//lyric")
+                                    if chord_sub_el is not None
+                                    else None)
+
+                if not lyric_for_chord:
+                    lyric_for_chord = lyric_before_segment
+
+                lyric_before_segment = None
+
+                new_voice_measure_child_children: List[XmlNode] = []
+                has_lyric = False
+                for c in measure_child.children:
+                    if c.tag != 'chord':
+                        new_voice_measure_child_children.append(c)
+                        if c.tag == 'lyric':
+                            has_lyric = True
+                    
+                if lyric_for_chord and not has_lyric:
+                    new_voice_measure_child_children.append(lyric_for_chord)
+
                 voice_measure_children.append(measure_child.clone_with_changes(  # type: ignore
-                    new_children=[c for c in measure_child.children
-                                  if c.tag != 'chord']
+                    new_children=new_voice_measure_child_children
                 ))
 
         if found_segment and (first_print or first_attributes):
@@ -148,13 +179,14 @@ def create_split_music_xml_node(
     for p in parts_details:
         part_params = product(range(len(p.voices)), zip(tempos, tempos[1:] + [None]),)
         for voice_idx, tempo_segment in part_params:
-            for chord_level in range(1, p.largest_chord_per_voice[voice_idx] + 1):
+            for chord_lvl in range(1, p.largest_chord_per_voice[voice_idx] + 1):
                 splits_to_generate.append(SplitParams(
                     part_idx=p.part_idx,
                     part_name=p.part_name,
                     voice=p.voices[voice_idx],
                     tempo_segment=tempo_segment,
-                    chord_level=chord_level,
+                    chord_lvl=chord_lvl,
+                    largest_chord_lvl=p.largest_chord_per_voice[voice_idx],
                 ))
 
     splits: List[Tuple[str, XmlNode]] = []

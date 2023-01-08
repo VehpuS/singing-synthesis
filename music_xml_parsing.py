@@ -145,7 +145,9 @@ def get_tempo_sections_from_singing_parts(
 def has_note(
     xml_node: XmlNode,
 ) -> bool:
-    return xml_node.find(".//note") is not None
+    '''Return true if node has non resting notes'''
+    return (xml_node.find(".//note") is not None and
+            len(xml_node.findall(".//note")) != len(xml_node.findall(".//note/rest")))
 
 
 def merge_nodes(
