@@ -170,7 +170,8 @@ def create_music_xml_split(
 
 def create_split_music_xml_node(
     music_xml_path: str,
-) -> List[Tuple[str, XmlNode]]:
+    output_dir: str='',
+) -> List[Tuple[str, XmlNode, SplitParams]]:
     parsed_xml = read_as_xml_node(music_xml_path)
     parts_details = parse_vocal_parts_from_root(parsed_xml)
     tempos = get_tempo_sections_from_singing_parts(parsed_xml)
@@ -189,10 +190,17 @@ def create_split_music_xml_node(
                     largest_chord_lvl=p.largest_chord_per_voice[voice_idx],
                 ))
 
-    splits: List[Tuple[str, XmlNode]] = []
+    splits: List[Tuple[str, XmlNode, SplitParams]] = []
     for split_params in tqdm(splits_to_generate, "Split"):
+        base_output_path = music_xml_path
+        if output_dir:
+            base_output_path = os.path.join(
+                output_dir,
+                os.path.basename(base_output_path)
+            )
         splits.append((f"{music_xml_path.replace('.xml', '')}-{split_params.get_file_suffix()}.xml",
-                       create_music_xml_split(parsed_xml, split_params),))
+                       create_music_xml_split(parsed_xml, split_params),
+                       split_params,))
 
     return splits
 
@@ -203,13 +211,13 @@ if __name__ == "__main__":
     parser.add_argument("--dry_run", action="store_true", help="If passed, split results will be printed rather than saved to new XML files")
     parser.add_argument("--output_dir", default=None, help="Output to a different directory than the input file, if passed")
     args = parser.parse_args()
-    splits = create_split_music_xml_node(args.input_file)
+    output_dir = (os.path.dirname(args.input_file)
+                  if args.output_dir is None
+                  else args.output_dir)
+    splits = create_split_music_xml_node(args.input_file, output_dir)
     if args.dry_run:
         tqdm.write(pformat(splits))
     else:
-        output_dir = (os.path.dirname(args.input_file)
-                      if args.output_dir is None
-                      else args.output_dir)
-        for split_name, split_node in tqdm(splits, "Output Files"):
+        for split_name, split_node, _split_params in tqdm(splits, "Output Files"):
             if has_note(split_node):
                 split_node(split_name, prefix_str=MUSIC_XML_PREFIX)
