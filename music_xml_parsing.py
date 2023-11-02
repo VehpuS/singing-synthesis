@@ -1,30 +1,23 @@
 import random
 import xml.etree.ElementTree as ET
-from typing import List, NamedTuple, Collection, Set, Union, cast
+from typing import List, NamedTuple, Collection, cast
 
 from tqdm import tqdm
 
-from xml_helpers import XmlNode, create_xml_node
+from xml_helpers import clone_xml_el_with_changes, get_element_children
 
 MUSIC_XML_PREFIX = '<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">'
 
 
-def root_to_part_name_list(root: ET.Element | XmlNode) -> List[str]:
-    return [
-        str(el.XML_TEXT if isinstance(el, XmlNode) else el.text)
-        for el in root.findall("part-list/score-part/part-name")
-    ]
+def root_to_part_name_list(root: ET.Element) -> List[str]:
+    return [str(el.text) for el in root.findall("part-list/score-part/part-name")]
 
 
-def root_to_percussion_indices(root: ET.Element | XmlNode):
+def root_to_percussion_indices(root: ET.Element):
     return [
         index
         for index, el in enumerate(root.findall("part/measure[1]/attributes/clef/sign"))
-        if (
-            el.XML_TEXT == "percussion"
-            if isinstance(el, XmlNode)
-            else (el.text == "percussion")
-        )
+        if (el.text == "percussion")
     ]
 
 
@@ -44,28 +37,22 @@ class MusicXMLPart(NamedTuple):
     largest_chord_per_voice: List[int]
 
 
-def parse_vocal_parts_from_root(root_el: ET.Element | XmlNode) -> List[MusicXMLPart]:
-    root: XmlNode = (
-        create_xml_node(cast(ET.Element, root_el))
-        if type(root_el) is not XmlNode
-        else cast(XmlNode, root_el)
-    )
-
+def parse_vocal_parts_from_root(root: ET.Element) -> List[MusicXMLPart]:
     part_names = root_to_part_name_list(root)
     parts = root.findall("part")
 
     parsed_parts: List[MusicXMLPart] = []
     for part_idx, (part_name, part_node) in enumerate(zip(part_names, parts)):
         clef_sign = part_node.find("measure[1]/attributes/clef/sign")
-        if part_name is None or clef_sign is None or clef_sign.XML_TEXT == "percussion":
+        if part_name is None or clef_sign is None or clef_sign.text == "percussion":
             continue
 
         voices: List[str] = list(
             set(
                 [
-                    v.XML_TEXT
+                    v.text
                     for v in part_node.findall(".//voice")
-                    if v is not None and v.XML_TEXT
+                    if v is not None and v.text
                 ]
             )
         )
@@ -76,17 +63,20 @@ def parse_vocal_parts_from_root(root_el: ET.Element | XmlNode) -> List[MusicXMLP
         largest_chord_per_voice = [1] * len(voices)
 
         for v_idx, voice in enumerate(voices):
-            voice_children: List[XmlNode] = []
-            for part_child in part_node.children:
+            voice_children: List[ET.Element] = []
+            for part_child in get_element_children(part_node):
                 if part_child.tag != "measure":
                     voice_children.append(part_child)  # type: ignore
                     continue
-                voice_measure_children: List[XmlNode] = []
-                for measure_child in part_child.children:
-                    if measure_child.tag != "note" or (
-                        type(measure_child.voice) is XmlNode
-                        and cast(XmlNode, measure_child.voice).XML_TEXT == voice
-                    ):
+                voice_measure_children: List[ET.Element] = []
+                for measure_child in get_element_children(part_child):
+                    if measure_child.tag == "note":
+                        continue
+                    voice_elements = measure_child.findall("voice")
+                    if len(voice_elements) != 1:
+                        continue
+                    voice_el = voice_elements[0]
+                    if voice_el is not None and voice_el.text == voice:
                         voice_measure_children.append(measure_child)
 
                 # chord detection https://www.w3.org/2021/06/musicxml40/musicxml-reference/elements/chord/
@@ -94,7 +84,7 @@ def parse_vocal_parts_from_root(root_el: ET.Element | XmlNode) -> List[MusicXMLP
                 for measure_child in voice_measure_children:
                     if measure_child.tag != "note":
                         curr_chord_size = 0
-                    elif "chord" in measure_child:
+                    elif measure_child.find("chord") is not None:
                         curr_chord_size += 1
                         largest_chord_per_voice[v_idx] = max(
                             largest_chord_per_voice[v_idx], curr_chord_size
@@ -115,15 +105,9 @@ def parse_vocal_parts_from_root(root_el: ET.Element | XmlNode) -> List[MusicXMLP
 
 
 def get_tempo_sections_from_singing_parts(
-    root_el: ET.Element | XmlNode,
+    root: ET.Element,
     default_tempo: float = DEFAULT_TEMPO,
 ) -> List[TempoSection]:
-    root: XmlNode = (
-        create_xml_node(cast(ET.Element, root_el))
-        if type(root_el) != XmlNode
-        else cast(XmlNode, root_el)
-    )
-
     IMPLICIT_TEMPO_SECTION = TempoSection(0, 0, default_tempo)
 
     tempo_sections: List[TempoSection] = []
@@ -132,22 +116,26 @@ def get_tempo_sections_from_singing_parts(
 
     for part_name, part_node in zip(part_names, parts):
         clef_sign = part_node.find("measure[1]/attributes/clef/sign")
-        if part_name is None or clef_sign is None or clef_sign.XML_TEXT == "percussion":
+        if part_name is None or clef_sign is None or clef_sign.text == "percussion":
             continue
 
         found_starting_tempo = False
         part_tempos = []
-        for part_child_idx, part_child in enumerate(part_node.children):
+        for part_child_idx, part_child in enumerate(get_element_children(part_node)):
             if part_child.tag != "measure":
                 continue
 
-            for measure_child_idx, measure_child in enumerate(part_child.children):
+            for measure_child_idx, measure_child in enumerate(get_element_children(part_child)):
                 if measure_child.tag != "direction":
                     if not found_starting_tempo:
+                        tqdm.write(
+                            f"Adding implicit starting tempo - found {measure_child.tag} before <direction>"
+                        )
                         found_starting_tempo = True
                         part_tempos.append(IMPLICIT_TEMPO_SECTION)
                     continue
 
+                tqdm.write("Looking for direction tempos")
                 direction_tempos = [
                     float(s.attrib["tempo"])
                     for s in measure_child.findall(".//sound")
@@ -173,7 +161,7 @@ def get_tempo_sections_from_singing_parts(
 
 
 def has_note(
-    xml_node: XmlNode,
+    xml_node: ET.Element,
 ) -> bool:
     """Return true if node has non resting notes"""
     return xml_node.find(".//note") is not None and len(
@@ -182,8 +170,8 @@ def has_note(
 
 
 def merge_nodes(
-    curr_node: XmlNode | None,
-    new_node: XmlNode,
+    curr_node: ET.Element | None,
+    new_node: ET.Element,
     tags_to_merge: List[str],
     co_exclusive_tags: List[Collection[str]] = [],
     _tags_to_append: List[str] = [],  # TODO
@@ -191,18 +179,15 @@ def merge_nodes(
     if curr_node is None:
         return new_node
 
-    new_children: List[XmlNode] = []
+    new_children: List[ET.Element] = []
     for tag in tags_to_merge:
-        new_child: XmlNode | List[XmlNode] = []
-        if tag in new_node:
-            new_child = new_node[tag]
-        elif tag in curr_node:
-            new_child = curr_node[tag]
-
-        if type(new_child) is list:
-            new_children.extend(cast(List[XmlNode], new_child))
-        else:
-            new_children.append(cast(XmlNode, new_child))
+        new_node_tag_children = new_node.findall(tag)
+        tag_children = (
+            new_node_tag_children
+            if len(new_node_tag_children) > 0
+            else curr_node.findall(tag)
+        )
+        new_children.extend(tag_children)
 
     new_children_tags = [c.tag for c in new_children]
     for co_exclusive_group in co_exclusive_tags:
@@ -213,7 +198,7 @@ def merge_nodes(
             continue
         tag_to_keep = co_exclusive_tags_in_children[0]
         for tag in co_exclusive_tags_in_children:
-            if tag in new_node:
+            if new_node.find(tag) is not None:
                 tag_to_keep = tag
                 break
 
@@ -223,11 +208,11 @@ def merge_nodes(
             if c.tag == tag_to_keep or c.tag not in co_exclusive_tags
         ]
 
-    return new_node.clone_with_changes(new_children=new_children)
+    return clone_xml_el_with_changes(new_node, new_children=new_children)
 
 
 def merge_print_nodes(
-    curr_node: XmlNode | None, node_or_nodes_to_merge: XmlNode | List[XmlNode,]
+    curr_node: ET.Element | None, node_or_nodes_to_merge: ET.Element | List[ET.Element,]
 ):
     """
     In this order
@@ -241,9 +226,9 @@ def merge_print_nodes(
     """
     # https://www.w3.org/2021/06/musicxml40/musicxml-reference/elements/print
     node_to_merge = cast(
-        XmlNode,
+        ET.Element,
         node_or_nodes_to_merge[-1]
-        if type(node_or_nodes_to_merge) == list
+        if type(node_or_nodes_to_merge) is list
         else node_or_nodes_to_merge,
     )
 
@@ -262,7 +247,7 @@ def merge_print_nodes(
 
 
 def merge_attributes_nodes(
-    curr_node: XmlNode | None, node_or_nodes_to_merge: XmlNode | List[XmlNode,]
+    curr_node: ET.Element | None, node_or_nodes_to_merge: ET.Element | List[ET.Element,]
 ):
     """
     In this order
@@ -284,9 +269,9 @@ def merge_attributes_nodes(
     """
     # https://www.w3.org/2021/06/musicxml40/musicxml-reference/elements/attributes
     node_to_merge = cast(
-        XmlNode,
+        ET.Element,
         node_or_nodes_to_merge[-1]
-        if type(node_or_nodes_to_merge) == list
+        if type(node_or_nodes_to_merge) is list
         else node_or_nodes_to_merge,
     )
 
@@ -318,8 +303,8 @@ def merge_attributes_nodes(
 
 
 if __name__ == "__main__":
-    from xml_helpers import read_as_xml_node
+    from xml_helpers import read_xml_path
 
-    tempo_example_root = read_as_xml_node("./tempo-example.xml")
+    tempo_example_root = read_xml_path("./tempo-example.xml")
     tqdm.write(str(parse_vocal_parts_from_root(tempo_example_root)))
     tqdm.write(str(get_tempo_sections_from_singing_parts(tempo_example_root)))

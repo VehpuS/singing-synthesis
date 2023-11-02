@@ -2,7 +2,7 @@ import argparse
 from itertools import product
 import os
 from pprint import pformat
-from typing import List, NamedTuple, Tuple, cast
+from typing import List, NamedTuple, Optional, Tuple, cast
 
 from tqdm import tqdm
 
@@ -14,9 +14,15 @@ from music_xml_parsing import (
     merge_attributes_nodes,
     merge_print_nodes,
     parse_vocal_parts_from_root,
-    root_to_part_name_list,
 )
-from xml_helpers import XmlNode, read_as_xml_node
+from xml_helpers import (
+    clone_xml_el_with_changes,
+    export_xml_el_to_file,
+    get_element_children,
+    read_xml_path,
+)
+
+import xml.etree.ElementTree as ET
 
 
 class SplitParams(NamedTuple):
@@ -39,38 +45,48 @@ class SplitParams(NamedTuple):
 
 
 def create_music_xml_split(
-    xml_node: XmlNode,
+    xml_node: ET.Element,
     params: SplitParams,
-) -> XmlNode:
-    base_part_list = cast(XmlNode, xml_node["part-list"])
-    assert type(base_part_list) != list
-    part_name_children = [c for c in base_part_list.children if "part-name" in c]
-    split_part_name_child = part_name_children[params.part_idx]
+) -> ET.Element:
+    base_part_list = xml_node.find("part-list")
+    assert base_part_list is not None
+
+    part_name_children: List[Tuple[str, ET.Element]] = []
+    for part_name_child in get_element_children(base_part_list):
+        part_name_child_text_el = part_name_child.find("part-name")
+        part_name: Optional[str] = (
+            part_name_child_text_el.text
+            if part_name_child_text_el is not None
+            else None
+        )
+        if part_name:
+            part_name_children.append((part_name, part_name_child))
+
+    split_part_name_child_tuple = part_name_children[params.part_idx]
+    tqdm.write(
+        f"split_part_name_child={split_part_name_child_tuple[1]}. Text={split_part_name_child_tuple[0]}"
+    )
     assert (
-        cast(XmlNode, split_part_name_child["part-name"]).XML_TEXT == params.part_name
-    ), f"Missing part name {params.part_name}"
-    split_part_list = base_part_list.clone_with_changes(
-        new_children=[split_part_name_child]
+        split_part_name_child_tuple[0] == params.part_name
+    ), f"Wrong part name {params.part_name} at index {params.part_idx}. Found parts {[p[0] for p in part_name_children]}"
+    split_part_list = clone_xml_el_with_changes(
+        base_part_list, new_children=[split_part_name_child_tuple[1]]
     )
 
-    parts = (
-        [cast(XmlNode, xml_node["part"])]
-        if type(xml_node["part"]) == XmlNode
-        else cast(List[XmlNode], xml_node["part"])
-    )
-    base_part = cast(XmlNode, parts[params.part_idx])
-    assert type(base_part) != list
+    parts = xml_node.findall("part")
+    base_part = parts[params.part_idx]
 
     start_tempo_segment = params.tempo_segment[0]
     end_tempo_segment = params.tempo_segment[1]
 
-    split_part_children: List[XmlNode] = []
-    # first_print: XmlNode | None = None
+    split_part_children: List[ET.Element] = []
     found_segment = False
-    first_print: XmlNode | None = None
-    first_attributes: XmlNode | None = None
+    first_print: ET.Element | None = None
+    first_attributes: ET.Element | None = None
+
+    base_part_children = get_element_children(base_part)
     for part_child_idx, part_child in tqdm(
-        enumerate(base_part.children), "Measures", total=len(base_part.children)
+        enumerate(base_part_children), "Measures", total=len(base_part_children)
     ):
         if part_child.tag != "measure":
             # Not a measure
@@ -80,26 +96,28 @@ def create_music_xml_split(
             end_tempo_segment and end_tempo_segment.part_child_idx < part_child_idx
         ):
             # Not a measure in the tempo segment
-            if not found_segment and "print" in part_child:
-                first_print = merge_print_nodes(first_print, part_child["print"])
-            if not found_segment and "attributes" in part_child:
+            print_el = part_child.find("print")
+            if not found_segment and print_el is not None:
+                first_print = merge_print_nodes(first_print, print_el)
+
+            attributes_el = part_child.find("attributes")
+            if not found_segment and attributes_el is not None:
                 first_attributes = merge_attributes_nodes(
-                    first_attributes, part_child["attributes"]
+                    first_attributes, attributes_el
                 )
             continue
-        voice_measure_children: List[XmlNode] = []
+        voice_measure_children: List[ET.Element] = []
         curr_chord_lvl = 1
-        lyric_before_segment: XmlNode | None = None
+        lyric_before_segment: ET.Element | None = None
         chord_start_idx = -1
-        for measure_child_idx, measure_child in enumerate(part_child.children):
-            if "lyric" in measure_child and not found_segment:
-                lyrics = measure_child["lyric"]
-                if type(lyrics) == XmlNode:
-                    lyric_before_segment = cast(XmlNode, lyrics)
-                elif len(lyrics) > 0:
-                    lyric_before_segment = cast(List[XmlNode], lyrics)[0]
+        part_child_children = get_element_children(part_child)
+        for measure_child_idx, measure_child in enumerate(part_child_children):
+            lyric_el = measure_child.find("lyric")
+            if lyric_el is not None and not found_segment:
+                lyric_before_segment = lyric_el
 
-            if measure_child.tag != "note" or "rest" in measure_child:
+            rest_el = measure_child.find("rest")
+            if measure_child.tag != "note" or rest_el is not None:
                 # Not a note / is a rest
                 voice_measure_children.append(measure_child)  # type: ignore
                 chord_start_idx = measure_child_idx
@@ -120,15 +138,14 @@ def create_music_xml_split(
                 continue
 
             found_segment = True
-            if (
-                type(measure_child.voice) == XmlNode
-                and cast(XmlNode, measure_child.voice).XML_TEXT != params.voice
-            ):
+            voice_el = measure_child.find("voice")
+            if voice_el is not None and voice_el.text != params.voice:
                 # Wrong voice
                 continue
 
             # chord detection https://www.w3.org/2021/06/musicxml40/musicxml-reference/elements/chord/
-            if "chord" in measure_child:
+            chord_el = measure_child.find("chord")
+            if chord_el is not None:
                 curr_chord_lvl += 1
             else:
                 chord_start_idx = measure_child_idx
@@ -136,12 +153,13 @@ def create_music_xml_split(
 
             if curr_chord_lvl == params.chord_lvl:
                 chord_sub_el = (
-                    part_child.clone_with_changes(
-                        new_children=part_child.children[
+                    clone_xml_el_with_changes(
+                        part_child,
+                        new_children=part_child_children[
                             chord_start_idx : chord_start_idx
                             + params.largest_chord_lvl
                             + 1
-                        ]
+                        ],
                     )
                     if chord_start_idx > 0
                     else None
@@ -155,9 +173,10 @@ def create_music_xml_split(
 
                 lyric_before_segment = None
 
-                new_voice_measure_child_children: List[XmlNode] = []
+                new_voice_measure_child_children: List[ET.Element] = []
                 has_lyric = False
-                for c in measure_child.children:
+                measure_child_children = get_element_children(measure_child)
+                for c in measure_child_children:
                     if c.tag != "chord":
                         new_voice_measure_child_children.append(c)
                         if c.tag == "lyric":
@@ -167,8 +186,8 @@ def create_music_xml_split(
                     new_voice_measure_child_children.append(lyric_for_chord)
 
                 voice_measure_children.append(
-                    measure_child.clone_with_changes(  # type: ignore
-                        new_children=new_voice_measure_child_children
+                    clone_xml_el_with_changes(
+                        measure_child, new_children=new_voice_measure_child_children
                     )
                 )
 
@@ -182,16 +201,16 @@ def create_music_xml_split(
             first_attributes = None
 
         if len(voice_measure_children) > 0:
-            new_measure = part_child.clone_with_changes(
-                new_children=voice_measure_children
+            new_measure = clone_xml_el_with_changes(
+                part_child, new_children=voice_measure_children
             )
             split_part_children.append(new_measure)
 
-    split_part = base_part.clone_with_changes(new_children=split_part_children)
+    split_part = clone_xml_el_with_changes(base_part, new_children=split_part_children)
 
     new_root_children = []
     pushed_split_part = False
-    for child in xml_node.children:
+    for child in get_element_children(xml_node):
         if child.tag == "part-list":
             new_root_children.append(split_part_list)
         elif child.tag == "part":
@@ -201,14 +220,14 @@ def create_music_xml_split(
         else:
             new_root_children.append(child)
 
-    return xml_node.clone_with_changes(new_children=new_root_children)
+    return clone_xml_el_with_changes(xml_node, new_children=new_root_children)
 
 
 def create_split_music_xml_node(
     music_xml_path: str,
     output_dir: str = "",
-) -> List[Tuple[str, XmlNode, SplitParams]]:
-    parsed_xml = read_as_xml_node(music_xml_path)
+) -> List[Tuple[str, ET.Element, SplitParams]]:
+    parsed_xml = read_xml_path(music_xml_path)
     parts_details = parse_vocal_parts_from_root(parsed_xml)
     tempos = get_tempo_sections_from_singing_parts(parsed_xml)
 
@@ -234,7 +253,7 @@ def create_split_music_xml_node(
                     )
                 )
 
-    splits: List[Tuple[str, XmlNode, SplitParams]] = []
+    splits: List[Tuple[str, ET.Element, SplitParams]] = []
     for split_params in tqdm(splits_to_generate, "Split"):
         base_output_path = music_xml_path
         if output_dir:
@@ -243,7 +262,7 @@ def create_split_music_xml_node(
             )
         splits.append(
             (
-                f"{music_xml_path.replace('.xml', '')}-{split_params.get_file_suffix()}.xml",
+                f"{base_output_path.replace('.xml', '')}-{split_params.get_file_suffix()}.xml",
                 create_music_xml_split(parsed_xml, split_params),
                 split_params,
             )
@@ -277,4 +296,7 @@ if __name__ == "__main__":
     else:
         for split_name, split_node, _split_params in tqdm(splits, "Output Files"):
             if has_note(split_node):
-                split_node(split_name, prefix_str=MUSIC_XML_PREFIX)
+                tqdm.write(f"Exporting to {split_name}")
+                export_xml_el_to_file(
+                    split_node, split_name, prefix_str=MUSIC_XML_PREFIX
+                )
