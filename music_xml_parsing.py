@@ -1,12 +1,13 @@
 import random
 import xml.etree.ElementTree as ET
-from typing import List, NamedTuple, Collection, cast
+from typing import List, Literal, NamedTuple, Collection, cast
 
 from tqdm import tqdm
 
 from xml_helpers import clone_xml_el_with_changes, get_element_children
 
 MUSIC_XML_PREFIX = '<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">'
+MusicXMLStep = Literal["C", "D", "E", "F", "G", "A", "B"]
 
 
 def root_to_part_name_list(root: ET.Element) -> List[str]:
@@ -125,7 +126,9 @@ def get_tempo_sections_from_singing_parts(
             if part_child.tag != "measure":
                 continue
 
-            for measure_child_idx, measure_child in enumerate(get_element_children(part_child)):
+            for measure_child_idx, measure_child in enumerate(
+                get_element_children(part_child)
+            ):
                 if measure_child.tag != "direction":
                     if not found_starting_tempo:
                         tqdm.write(
@@ -300,6 +303,48 @@ def merge_attributes_nodes(
         tags_to_merge=tags_to_merge,
         co_exclusive_tags=co_exclusive_tags,
     )
+
+
+def convert_midi_note_to_hertz(midi_note: float) -> float:
+    return 440 * 2.0 ** ((midi_note - 69) / 12)
+
+
+def convert_music_xml_element_to_hertz(
+    el: ET.Element,
+) -> float:
+    pitch_el = el.find("pitch")
+    assert pitch_el is not None
+    step_el = pitch_el.find("step")
+    assert step_el is not None and step_el.text
+    step = cast(MusicXMLStep, step_el.text)
+    octave_el = pitch_el.find("octave")
+    assert octave_el is not None and octave_el.text
+    octave = int(octave_el.text)
+    alter_el = pitch_el.find("alter")
+    alter = 0
+    if alter_el is not None and alter_el.text:
+        alter = int(alter_el.text)
+    return convert_music_pitch_params_to_hertz(step, octave, alter)
+
+
+def convert_music_pitch_params_to_hertz(
+    step: MusicXMLStep, octave: int, alter: int
+) -> float:
+    """<pitch><step>A</step><alter>-1</alter><octave>2</octave></pitch>"""
+    midi_note = (
+        12 * (int(octave) + 1)
+        + {
+            "C": 0,
+            "D": 2,
+            "E": 4,
+            "F": 5,
+            "G": 7,
+            "A": 9,
+            "B": 11,
+        }[step]
+        + alter
+    )
+    return convert_midi_note_to_hertz(midi_note)
 
 
 if __name__ == "__main__":
