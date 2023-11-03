@@ -255,26 +255,18 @@ def create_oddvoice_part(
                     )
                     part_json.events.append(
                         OddVoiceJSONEvent(
-                            event_type=EventType.NoteOff,
-                            time=time_elapsed + event_seconds,
-                        )
-                    )
-                    part_json.events.append(
-                        OddVoiceJSONEvent(
                             event_type=EventType.SetPhonemeSpeed,
                             time=time_elapsed + event_seconds,
                             phonemeSpeed=1.0,
                         )
                     )
-
                 time_elapsed += event_seconds
-
-        part_json.events.append(
-            OddVoiceJSONEvent(
-                event_type=EventType.NoteOff,
-                time=time_elapsed,
+            part_json.events.append(
+                OddVoiceJSONEvent(
+                    event_type=EventType.NoteOff,
+                    time=time_elapsed,
+                )
             )
-        )
 
     return part_json
 
