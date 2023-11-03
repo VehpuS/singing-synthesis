@@ -158,7 +158,6 @@ def get_tempo_sections_from_singing_parts(
                     found_starting_tempo = True
 
         tempo_sections.extend(part_tempos)
-    random.shuffle(tempo_sections)
     tempo_sections.sort(key=lambda s: s[:2])
     return tempo_sections
 
@@ -345,6 +344,15 @@ def convert_music_pitch_params_to_hertz(
         + alter
     )
     return convert_midi_note_to_hertz(midi_note)
+
+
+def duration_to_seconds(
+    duration: float,
+    divisions: float,
+    tempo: float,
+) -> float:
+    """Convert MusicXML duration units to seconds."""
+    return duration * 60.0 / divisions / tempo
 
 
 if __name__ == "__main__":

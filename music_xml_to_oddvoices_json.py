@@ -10,7 +10,9 @@ import xml.etree.ElementTree as ET
 from tqdm import tqdm
 
 from music_xml_parsing import (
+    DEFAULT_TEMPO,
     convert_music_xml_element_to_hertz,
+    duration_to_seconds,
     parse_vocal_parts_from_root,
 )
 from oddvoice_helpers import EventType, OddVoiceJSONEvent
@@ -57,25 +59,27 @@ def create_oddvoice_part(
             part_name_children.append((part_name, part_name_child))
 
     split_part_name_child_tuple = part_name_children[params.part_idx]
-    tqdm.write(
-        f"split_part_name_child={split_part_name_child_tuple[1]}. Text={split_part_name_child_tuple[0]}"
-    )
     assert (
         split_part_name_child_tuple[0] == params.part_name
-    ), f"Wrong part name {params.part_name} at index {params.part_idx}. Found parts {[p[0] for p in part_name_children]}"
+    ), f"Wrong part name while expecting {params.part_name} at index {params.part_idx}. Found part {split_part_name_child_tuple[0]}"
 
-    parts = xml_node.findall("part")
-    base_part = parts[params.part_idx]
+    tqdm.write(f"Processing part {split_part_name_child_tuple[0]}")
+
+    all_parts = xml_node.findall("part")
+    all_parts_children: List[List[ET.Element]] = [
+        get_element_children(part) for part in all_parts
+    ]
 
     found_segment = False
 
-    part_json = OddVoiceJSON(
-        lyrics="",
-        events=[],
-    )
+    part_json = OddVoiceJSON(lyrics="", events=[])
     time_elapsed = 0
 
-    base_part_children = get_element_children(base_part)
+    current_divisions = 1
+
+    current_tempo = DEFAULT_TEMPO
+
+    base_part_children = all_parts_children[params.part_idx]
     for part_child in tqdm(
         base_part_children, "Measures", total=len(base_part_children)
     ):
@@ -86,8 +90,36 @@ def create_oddvoice_part(
         curr_chord_lvl = 1
         lyric_before_segment: ET.Element | None = None
         chord_start_idx = -1
-        part_child_children = get_element_children(part_child)
-        for measure_child_idx, measure_child in enumerate(part_child_children):
+
+        measure_children = get_element_children(part_child)
+        for measure_child_idx, measure_child in enumerate(measure_children):
+            # Update the tempo if we find a new one
+            tqdm.write("Looking for tempo changes in measure across all parts")
+            measure_children_in_all_parts = [
+                part_measure_children[measure_child_idx]
+                for part_measure_children in all_parts_children
+                if len(part_measure_children) > measure_child_idx
+            ]
+
+            for measure_child_in_all_parts in measure_children_in_all_parts:
+                direction_tempos = [
+                    float(s.attrib["tempo"])
+                    for s in measure_child_in_all_parts.findall(".//sound")
+                    if "tempo" in s.attrib
+                ]
+                if len(direction_tempos) > 0:
+                    tqdm.write(f"Found new tempo {direction_tempos[-1]}")
+                    current_tempo = direction_tempos[-1]
+                    break
+
+            # Update the divisions if we find a new one
+            tqdm.write("Looking for divisions")
+            if measure_child.tag == "attributes":
+                divisions_el = measure_child.find("divisions")
+                if divisions_el is not None and divisions_el.text:
+                    tqdm.write(f"Found new divisions {divisions_el.text}")
+                    current_divisions = int(divisions_el.text)
+
             # The lyrics can be assigned to another voice, so we need to keep track of the first occurrence
             lyric_el = measure_child.find("lyric")
             if lyric_el is not None and not found_segment:
@@ -99,12 +131,16 @@ def create_oddvoice_part(
                 chord_start_idx = measure_child_idx
                 curr_chord_lvl = 0
 
-                if rest_el is not None:
-                    duration_el = measure_child.find("duration")
-                    assert duration_el is not None and duration_el.text, ET.tostring(
-                        measure_child, encoding="utf8"
+                duration_el = measure_child.find("duration")
+                if duration_el is not None:
+                    assert duration_el.text, ET.tostring(measure_child, encoding="utf8")
+                    is_backup = measure_child.tag == "backup"
+                    duration = float(duration_el.text) * (-1 if is_backup else 1)
+                    event_seconds = duration_to_seconds(
+                        duration=duration,
+                        divisions=current_divisions,
+                        tempo=current_tempo,
                     )
-                    duration = float(duration_el.text)
                     part_json.events.append(
                         OddVoiceJSONEvent(
                             event_type=EventType.NoteOff,
@@ -117,7 +153,7 @@ def create_oddvoice_part(
                             time=time_elapsed,
                         )
                     )
-                    time_elapsed += duration / 4
+                    time_elapsed += event_seconds
 
                 continue
 
@@ -140,7 +176,7 @@ def create_oddvoice_part(
                 chord_sub_el = (
                     clone_xml_el_with_changes(
                         part_child,
-                        new_children=part_child_children[
+                        new_children=measure_children[
                             chord_start_idx : chord_start_idx
                             + params.largest_chord_lvl
                             + 1
@@ -186,9 +222,14 @@ def create_oddvoice_part(
                 duration_el = measure_child.find("duration")
                 assert duration_el is not None and duration_el.text
                 duration = float(duration_el.text)
+                event_seconds = duration_to_seconds(
+                    duration=duration,
+                    divisions=current_divisions,
+                    tempo=current_tempo,
+                )
                 frequency = convert_music_xml_element_to_hertz(measure_child)
                 tqdm.write(
-                    f"Note on {measure_child_idx} with duration {duration} and frequency {frequency}"
+                    f"Note number {measure_child_idx} with duration {duration} ({event_seconds} seconds) and frequency {frequency}"
                 )
                 part_json.events.append(
                     OddVoiceJSONEvent(
@@ -203,7 +244,30 @@ def create_oddvoice_part(
                         time=time_elapsed,
                     )
                 )
-                time_elapsed += duration / 4
+                staccato_el = measure_child.find("staccato")
+                if staccato_el is not None:
+                    part_json.events.append(
+                        OddVoiceJSONEvent(
+                            event_type=EventType.SetPhonemeSpeed,
+                            time=time_elapsed,
+                            phonemeSpeed=1.5,
+                        )
+                    )
+                    part_json.events.append(
+                        OddVoiceJSONEvent(
+                            event_type=EventType.NoteOff,
+                            time=time_elapsed + event_seconds,
+                        )
+                    )
+                    part_json.events.append(
+                        OddVoiceJSONEvent(
+                            event_type=EventType.SetPhonemeSpeed,
+                            time=time_elapsed + event_seconds,
+                            phonemeSpeed=1.0,
+                        )
+                    )
+
+                time_elapsed += event_seconds
 
         part_json.events.append(
             OddVoiceJSONEvent(
