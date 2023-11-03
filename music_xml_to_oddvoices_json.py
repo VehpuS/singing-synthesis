@@ -107,6 +107,12 @@ def create_oddvoice_part(
                     duration = float(duration_el.text)
                     part_json.events.append(
                         OddVoiceJSONEvent(
+                            event_type=EventType.NoteOff,
+                            time=time_elapsed,
+                        )
+                    )
+                    part_json.events.append(
+                        OddVoiceJSONEvent(
                             event_type=EventType.Empty,
                             time=time_elapsed,
                         )
@@ -197,13 +203,14 @@ def create_oddvoice_part(
                         time=time_elapsed,
                     )
                 )
-                part_json.events.append(
-                    OddVoiceJSONEvent(
-                        event_type=EventType.NoteOff,
-                        time=time_elapsed + duration / 4,
-                    )
-                )
                 time_elapsed += duration / 4
+
+        part_json.events.append(
+            OddVoiceJSONEvent(
+                event_type=EventType.NoteOff,
+                time=time_elapsed,
+            )
+        )
 
     return part_json
 
