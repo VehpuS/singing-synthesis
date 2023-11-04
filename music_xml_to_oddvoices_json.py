@@ -8,6 +8,10 @@ from typing import List, NamedTuple, Optional, Tuple, cast
 import xml.etree.ElementTree as ET
 
 from tqdm import tqdm
+from lyrics_helpers import (
+    LYRICS_TO_CONSIDER_AS_CONTINUATIONS,
+    LETTERS_TO_AVOID_APPENDING,
+)
 
 from music_xml_parsing import (
     DEFAULT_TEMPO,
@@ -206,18 +210,70 @@ def create_oddvoice_part(
                 if lyric_for_chord and not has_lyric:
                     new_voice_measure_child_children.append(lyric_for_chord)
 
-                new_lyrics_parts = []
-                for c in new_voice_measure_child_children:
-                    text_el = c.find("text")
-                    if text_el is None:
+                new_lyrics_text = part_json.lyrics
+                for lyric_el in new_voice_measure_child_children:
+                    if lyric_el.tag != "lyric":
+                        # No lyric element,
                         continue
-                    text_in_c = text_el.text
-                    if text_in_c and f"{text_in_c}".strip() != "":
-                        new_lyrics_parts.append(text_in_c)
+                    text_el = lyric_el.find("text")
+                    if text_el is None:
+                        # No text in the lyric,
+                        continue
 
-                part_json.lyrics = " ".join(
-                    [part_json.lyrics] + new_lyrics_parts
-                ).strip()
+                    text_in_c = text_el.text.strip() if text_el.text else None
+                    if not text_in_c or (
+                        len(text_in_c) == 1
+                        and text_in_c in LYRICS_TO_CONSIDER_AS_CONTINUATIONS
+                    ):
+                        # No new text to sing,
+                        continue
+
+                    # If this is the first lyric, add it
+                    previous_lyric_text = (
+                        new_lyrics_text.split(" ")[-1]
+                        if len(new_lyrics_text) > 0
+                        else ""
+                    )
+                    if not previous_lyric_text:
+                        new_lyrics_text += text_in_c
+                        continue
+
+                    syllabic_el = lyric_el.find("syllabic")
+                    if (
+                        syllabic_el is None
+                        # Always add the first syllable
+                        or syllabic_el.text == "single"
+                        or syllabic_el.text == "begin"
+                        # Add lyrics that are not vowels / h as a new syllable
+                        or text_in_c[0] not in LETTERS_TO_AVOID_APPENDING
+                    ):
+                        new_lyrics_text += " " + text_in_c
+                        continue
+
+                    # If the previous lyrics ended in or are a vowel and the new lyric is the same, skip it
+                    # Only add the new lyric if it starts with a different letter
+                    last_letter_in_previous_lyric = previous_lyric_text[-1]
+                    first_new_letter = 0
+
+                    for _ in range(1, min(len(previous_lyric_text), len(text_in_c))):
+                        if text_in_c[first_new_letter] != last_letter_in_previous_lyric:
+                            break
+
+                    if text_in_c[first_new_letter:].strip():
+                        new_lyrics_text += " " + text_in_c[first_new_letter:].strip()
+
+                lyrics_changed = new_lyrics_text != part_json.lyrics
+                if lyrics_changed:
+                    # Add a note off event before the new lyrics
+                    tqdm.write("Found new lyrics")
+                    part_json.events.append(
+                        OddVoiceJSONEvent(
+                            event_type=EventType.NoteOff,
+                            time=time_elapsed,
+                        )
+                    )
+
+                part_json.lyrics = new_lyrics_text
 
                 duration_el = measure_child.find("duration")
                 assert duration_el is not None and duration_el.text
@@ -238,12 +294,13 @@ def create_oddvoice_part(
                         frequency=frequency,
                     )
                 )
-                part_json.events.append(
-                    OddVoiceJSONEvent(
-                        event_type=EventType.NoteOn,
-                        time=time_elapsed,
+                if lyrics_changed:
+                    part_json.events.append(
+                        OddVoiceJSONEvent(
+                            event_type=EventType.NoteOn,
+                            time=time_elapsed,
+                        )
                     )
-                )
                 staccato_el = measure_child.find("staccato")
                 if staccato_el is not None:
                     part_json.events.append(
@@ -261,12 +318,6 @@ def create_oddvoice_part(
                         )
                     )
                 time_elapsed += event_seconds
-            part_json.events.append(
-                OddVoiceJSONEvent(
-                    event_type=EventType.NoteOff,
-                    time=time_elapsed,
-                )
-            )
 
     return part_json
 
