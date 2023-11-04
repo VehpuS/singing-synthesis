@@ -4,3 +4,4 @@ tmp
 **/*.wav
 .venv
 test_outputs/
+.DS_Store
