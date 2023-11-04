@@ -1,10 +1,9 @@
-import random
 import xml.etree.ElementTree as ET
 from typing import List, Literal, NamedTuple, Collection, cast
 
 from tqdm import tqdm
 
-from xml_helpers import clone_xml_el_with_changes, get_element_children
+from common.xml_helpers import clone_xml_el_with_changes, get_element_children
 
 MUSIC_XML_PREFIX = '<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">'
 MusicXMLStep = Literal["C", "D", "E", "F", "G", "A", "B"]
@@ -365,7 +364,7 @@ def duration_to_seconds(
 
 
 if __name__ == "__main__":
-    from xml_helpers import read_xml_path
+    from common.xml_helpers import read_xml_path
 
     tempo_example_root = read_xml_path("./chord-example.xml")
     tqdm.write(str(parse_vocal_parts_from_root(tempo_example_root)))

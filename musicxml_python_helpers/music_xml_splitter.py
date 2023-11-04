@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 
 from tqdm import tqdm
 
-from music_xml_parsing import (
+from common.music_xml_parsing import (
     MUSIC_XML_PREFIX,
     TempoSection,
     get_tempo_sections_from_singing_parts,
@@ -16,7 +16,7 @@ from music_xml_parsing import (
     merge_print_nodes,
     parse_vocal_parts_from_root,
 )
-from xml_helpers import (
+from common.xml_helpers import (
     clone_xml_el_with_changes,
     export_xml_el_to_file,
     get_element_children,

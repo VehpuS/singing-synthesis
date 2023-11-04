@@ -8,19 +8,19 @@ from typing import List, NamedTuple, Optional, Tuple, cast
 import xml.etree.ElementTree as ET
 
 from tqdm import tqdm
-from lyrics_helpers import (
+from common.lyrics_helpers import (
     LYRICS_TO_CONSIDER_AS_CONTINUATIONS,
     LETTERS_TO_AVOID_APPENDING,
 )
 
-from music_xml_parsing import (
+from common.music_xml_parsing import (
     DEFAULT_TEMPO,
     convert_music_xml_element_to_hertz,
     duration_to_seconds,
     parse_vocal_parts_from_root,
 )
-from oddvoice_helpers import EventType, OddVoiceJSONEvent
-from xml_helpers import clone_xml_el_with_changes, get_element_children, read_xml_path
+from common.oddvoice_helpers import EventType, OddVoiceJSONEvent
+from common.xml_helpers import clone_xml_el_with_changes, get_element_children, read_xml_path
 
 
 class SplitParams(NamedTuple):
