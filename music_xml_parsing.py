@@ -46,6 +46,7 @@ def parse_vocal_parts_from_root(root: ET.Element) -> List[MusicXMLPart]:
     for part_idx, (part_name, part_node) in enumerate(zip(part_names, parts)):
         clef_sign = part_node.find("measure[1]/attributes/clef/sign")
         if part_name is None or clef_sign is None or clef_sign.text == "percussion":
+            tqdm.write(f"Skipping part {part_name} with clef {clef_sign}")
             continue
 
         voices: List[str] = list(
@@ -59,30 +60,38 @@ def parse_vocal_parts_from_root(root: ET.Element) -> List[MusicXMLPart]:
         )
 
         if len(voices) == 0:
+            tqdm.write(f"Found no voices in part {part_name}")
             continue
 
         largest_chord_per_voice = [1] * len(voices)
 
-        for v_idx, voice in enumerate(voices):
+        for v_idx, voice in tqdm(enumerate(voices), desc="Voices"):
             voice_children: List[ET.Element] = []
-            for part_child in get_element_children(part_node):
+            for part_child in tqdm(
+                get_element_children(part_node), desc="Part children"
+            ):
                 if part_child.tag != "measure":
+                    tqdm.write(f"Adding non measure {part_child.tag} to voice {voice}")
                     voice_children.append(part_child)  # type: ignore
                     continue
                 voice_measure_children: List[ET.Element] = []
                 for measure_child in get_element_children(part_child):
-                    if measure_child.tag == "note":
-                        continue
+                    if measure_child.tag != "note":
+                        voice_measure_children.append(measure_child)
                     voice_elements = measure_child.findall("voice")
                     if len(voice_elements) != 1:
                         continue
                     voice_el = voice_elements[0]
                     if voice_el is not None and voice_el.text == voice:
+                        tqdm.write(
+                            f"Adding {measure_child.tag} to voice {voice} in measure {part_child.attrib['number']}"
+                        )
                         voice_measure_children.append(measure_child)
 
                 # chord detection https://www.w3.org/2021/06/musicxml40/musicxml-reference/elements/chord/
                 curr_chord_size = 1
                 for measure_child in voice_measure_children:
+                    tqdm.write(f"Looking for chords in {measure_child.tag}")
                     if measure_child.tag != "note":
                         curr_chord_size = 0
                     elif measure_child.find("chord") is not None:
@@ -358,6 +367,6 @@ def duration_to_seconds(
 if __name__ == "__main__":
     from xml_helpers import read_xml_path
 
-    tempo_example_root = read_xml_path("./tempo-example.xml")
+    tempo_example_root = read_xml_path("./chord-example.xml")
     tqdm.write(str(parse_vocal_parts_from_root(tempo_example_root)))
     tqdm.write(str(get_tempo_sections_from_singing_parts(tempo_example_root)))
