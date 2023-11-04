@@ -1,10 +1,8 @@
 import argparse
-from dataclasses import dataclass
-from enum import Enum
 import json
 import os
 from pprint import pformat
-from typing import List, NamedTuple, Optional, Tuple, cast
+from typing import List, NamedTuple, Optional, Tuple
 import xml.etree.ElementTree as ET
 
 from tqdm import tqdm
@@ -19,7 +17,7 @@ from common.music_xml_parsing import (
     duration_to_seconds,
     parse_vocal_parts_from_root,
 )
-from common.oddvoice_helpers import EventType, OddVoiceJSONEvent
+from common.oddvoice_helpers import EventType, OddVoiceJSON, OddVoiceJSONEvent
 from common.xml_helpers import clone_xml_el_with_changes, get_element_children, read_xml_path
 
 
@@ -36,12 +34,6 @@ class SplitParams(NamedTuple):
             f"voice_{self.voice}-"
             f"chord_{self.chord_lvl}"
         )
-
-
-@dataclass
-class OddVoiceJSON:
-    lyrics: str
-    events: List[OddVoiceJSONEvent]
 
 
 def create_oddvoice_part(

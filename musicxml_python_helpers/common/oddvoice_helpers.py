@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
+from typing import List
 
 
 class EventType(Enum):
@@ -22,3 +23,9 @@ class OddVoiceJSONEvent:
     formantShift: float = 1.0
     # Used in SetPhonemeSpeed only.
     phonemeSpeed: float = 1.0
+
+
+@dataclass
+class OddVoiceJSON:
+    lyrics: str
+    events: List[OddVoiceJSONEvent]
