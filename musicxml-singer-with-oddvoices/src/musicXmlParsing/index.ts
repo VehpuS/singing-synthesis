@@ -1,18 +1,9 @@
-import { compact, filter, first, forEach, includes, map } from "lodash";
+import { compact, first, flatMap, forEach, map, times, uniq } from "lodash";
 
-import { cloneXmlElWithChanges, getXmlChildren } from './xmlHelpers';
+import { MeasureAttributes, MeasureDirection, MeasureNote, MeasureSound, MusicXMLStep, ScorePart, ScorePartMeasures, Measure, TempoSection, stepValues, Lyric, ScorePartwise } from "./types";
+import { findAllChildrenByTagName, findChildByTagName, getAllChildren, getAttributeValue, getTagName, getTextNode, isOrderedXMLNode } from "./xmlHelpers";
 
 export const DEFAULT_TEMPO = 120.0;
-
-type MusicXMLStep = "C" | "D" | "E" | "F" | "G" | "A" | "B";
-
-class TempoSection {
-    constructor(
-        public partChildIdx: number,
-        public measureChildIdx: number,
-        public tempo: number
-    ) { }
-}
 
 class MusicXMLPart {
     constructor(
@@ -23,19 +14,35 @@ class MusicXMLPart {
     ) { }
 }
 
-export function rootToPartNameList(root: Element): string[] {
-    return map(
-        Array.from(root.querySelectorAll("part-list score-part part-name")),
-        (el) => el.textContent || ""
-    );
+export function scorePartwiseToPartNameList(scorePartwise: ScorePartwise): string[] {
+    const partList = findChildByTagName(scorePartwise, "part-list");
+    const scoreParts = findAllChildrenByTagName<"score-part", ScorePart>(partList, "score-part");
+    return compact(map(
+        scoreParts,
+        (el) => getTextNode(findChildByTagName(el, "part-name"))
+    ));
 }
 
-export function rootToPercussionIndices(root: Element): number[] {
+export const getClefSignFromPart = (part: ScorePartMeasures): string | undefined => {
+    const partMeasures = getAllChildren<'part', ScorePartMeasures>(part);
+    const firstMeasure = first(partMeasures);
+    const attributes = findChildByTagName(firstMeasure, "attributes");
+    const clef = findChildByTagName(attributes, "clef");
+    const sign = findChildByTagName(clef, "sign");
+    const signText = getTextNode(sign);
+    return signText;
+}
+
+export function rootToPercussionIndices(scorePartwise: ScorePartwise): number[] {
     const indices: number[] = [];
-    const clefSigns = Array.from(root.querySelectorAll("part measure:nth-child(1) attributes clef sign"));
+    const allPartMeasures = findAllChildrenByTagName<"part", ScorePartMeasures>(scorePartwise, "part");
+    const clefSigns = flatMap(allPartMeasures, (partMeasures) => {
+        const signText = getClefSignFromPart(partMeasures);
+        return signText ? [signText] : [];
+    });
 
     forEach(clefSigns, (el, index) => {
-        if (el.textContent === "percussion") {
+        if (el === "percussion") {
             indices.push(index);
         }
     });
@@ -43,61 +50,66 @@ export function rootToPercussionIndices(root: Element): number[] {
     return indices;
 }
 
-export function parseVocalPartsFromRoot(root: Element): MusicXMLPart[] {
-    const partNames = rootToPartNameList(root);
-    const parts = Array.from(root.querySelectorAll("part"));
+export function parseVocalPartsFromRoot(scorePartwise: ScorePartwise): MusicXMLPart[] {
+    const partNames = scorePartwiseToPartNameList(scorePartwise);
+    const parts = findAllChildrenByTagName<"part", ScorePartMeasures>(scorePartwise, "part");
 
     const parsedParts: MusicXMLPart[] = [];
 
     for (let partIdx = 0; partIdx < partNames.length; partIdx++) {
         const partName = partNames[partIdx];
         const partNode = parts[partIdx];
-        const clefSign = partNode.querySelector("measure:nth-child(1) attributes clef sign");
+        const clefSign = getClefSignFromPart(partNode)
 
-        if (!partName || !clefSign || clefSign.textContent === "percussion") {
-            console.log(`Skipping part ${partName} with clef ${clefSign?.textContent}`);
+        if (!partName || !clefSign || clefSign === "percussion") {
+            console.log(`Skipping part ${partName} with clef ${clefSign}`);
             continue;
         }
 
-        const voices = compact(
-            map(
-                Array.from(partNode.querySelectorAll("voice")),
-                (v) => v.textContent
+        const partNodeChildren = getAllChildren<'part', ScorePartMeasures>(partNode);
+
+        const voices = uniq(compact(
+            flatMap(
+                partNodeChildren,
+                (measure) => map(findAllChildrenByTagName<"note", MeasureNote>(measure, "note"), (el) => getTextNode(findChildByTagName(el, "voice")))
             )
-        );
+        ));
 
         if (voices.length === 0) {
             console.log(`Found no voices in part ${partName}`);
             continue;
         }
 
-        const largestChordPerVoice = Array(voices.length).fill(1);
+        const largestChordPerVoice = times(voices.length, () => 1);
 
         for (let vIdx = 0; vIdx < voices.length; vIdx++) {
-            const voice = voices[vIdx];
+            const voice = (voices[vIdx]);
+            console.log(`Starting to analyze voice ${voice} at index ${vIdx + 1}/${voices.length}`)
 
-            for (const partChild of getXmlChildren(partNode)) {
-                if (partChild.tagName !== "measure") {
-                    console.log(`Skipping non-measure ${partChild.tagName} to voice ${voice}`);
+            for (const partChild of partNodeChildren) {
+                if (!isMeasure(partChild)) {
+                    console.log(`Skipping non-measure ${getTagName(partChild)} to voice ${voice}`);
                     continue;
                 }
 
-                const voiceMeasureChildren: Element[] = [];
+                const allMeasureChildren = getAllChildren<'measure', Measure>(partChild);
+                const voiceMeasureChildren: typeof allMeasureChildren = [];
 
-                for (const measureChild of getXmlChildren(partChild)) {
-                    if (measureChild.tagName !== "note") {
+                for (const measureChild of allMeasureChildren) {
+                    if (!isMeasureNote(measureChild)) {
                         voiceMeasureChildren.push(measureChild);
+                        continue;
                     }
 
-                    const voiceElements = Array.from(measureChild.querySelectorAll("voice"));
+                    const voiceElements = findAllChildrenByTagName(measureChild, "voice");
 
                     if (voiceElements.length !== 1) {
                         continue;
                     }
 
                     const voiceEl = first(voiceElements);
-                    if (voiceEl?.textContent === voice) {
-                        console.log(`Adding ${measureChild.tagName} to voice ${voice} in measure ${partChild.getAttribute('number')}`);
+                    if (getTextNode<"voice">(voiceEl) === voice) {
+                        console.log(`Adding ${getTagName(measureChild)} to voice ${voice} in measure ${getAttributeValue(partChild, 'number')}`, { partChild });
                         voiceMeasureChildren.push(measureChild);
                     }
                 }
@@ -105,19 +117,21 @@ export function parseVocalPartsFromRoot(root: Element): MusicXMLPart[] {
                 let currChordSize = 1;
 
                 for (const measureChild of voiceMeasureChildren) {
-                    console.log(`Looking for chords in ${measureChild.tagName}`);
+                    console.log(`Looking for chords in ${getTagName(measureChild)}`);
 
-                    if (measureChild.tagName !== "note") {
+                    if (!isMeasureNote(measureChild)) {
                         currChordSize = 0;
-                    } else if (measureChild.querySelector("chord")) {
+                    } else if (findChildByTagName(measureChild, "chord")) {
                         currChordSize++;
                         largestChordPerVoice[vIdx] = Math.max(largestChordPerVoice[vIdx], currChordSize);
                     } else {
                         currChordSize = 1;
                     }
                 }
-            }
 
+            }
+            
+            console.log(`Largest chord for voice ${voice}: ${largestChordPerVoice[vIdx]}`)
             parsedParts.push(
                 new MusicXMLPart(partName, partIdx, voices, largestChordPerVoice)
             );
@@ -128,40 +142,65 @@ export function parseVocalPartsFromRoot(root: Element): MusicXMLPart[] {
 }
 
 export function getTempoSectionsFromSingingParts(
-    root: Element,
+    scorePartwise: ScorePartwise,
     defaultTempo = DEFAULT_TEMPO
 ): TempoSection[] {
     const IMPLICIT_TEMPO_SECTION = new TempoSection(0, 0, defaultTempo);
     const tempoSections: TempoSection[] = [];
-    const partNames = rootToPartNameList(root);
-    const parts = Array.from(root.querySelectorAll("part"));
+    const partNames = scorePartwiseToPartNameList(scorePartwise);
+    const parts = findAllChildrenByTagName<"part", ScorePartMeasures>(scorePartwise, "part")
 
     for (let partIdx = 0; partIdx < partNames.length; partIdx++) {
         const partName = partNames[partIdx];
+        if (!partName) {
+            continue;
+        }
         const partNode = parts[partIdx];
-        const clefSign = partNode.querySelector("measure:nth-child(1) attributes clef sign");
+        const partMeasures = findAllChildrenByTagName<"measure", Measure>(partNode, "measure")
+        if (!partMeasures) {
+            continue;
+        }
+        const firstMeasure = first(partMeasures);
+        if (!firstMeasure) {
+            continue;
+        }
+        const attributes = findChildByTagName(firstMeasure, "attributes");
+        if (!attributes) {
+            continue;
+        }
+        const clefNode = findChildByTagName(attributes, "clef");
+        if (!clefNode) {
+            continue;
+        }
+        const clefSign = findChildByTagName(clefNode, "sign");
+        if (!clefSign) {
+            continue;
+        }
 
-        if (!partName || !clefSign || clefSign.textContent === "percussion") {
+        const clefSignText = findChildByTagName(clefSign, "#text");
+        if (!clefSignText || getTagName(clefSignText) === "percussion") {
             continue;
         }
 
         let foundStartingTempo = false;
         const partTempos: TempoSection[] = [];
 
-        for (let partChildIdx = 0; partChildIdx < getXmlChildren(partNode).length; partChildIdx++) {
-            const partChild = getXmlChildren(partNode)[partChildIdx];
+        for (let measureIdx = 0; measureIdx < partMeasures.length; measureIdx++) {
+            const currentMeasure = partMeasures[measureIdx];
 
-            if (partChild.tagName !== "measure") {
+
+            const partMeasuresChildren = getAllChildren<"measure", Measure>(currentMeasure);
+            if ((partMeasuresChildren || []).length === 0) {
                 continue;
             }
 
-            for (let measureChildIdx = 0; measureChildIdx < getXmlChildren(partChild).length; measureChildIdx++) {
-                const measureChild = getXmlChildren(partChild)[measureChildIdx];
+            for (let measureChildIdx = 0; measureChildIdx < partMeasuresChildren.length; measureChildIdx++) {
+                const measureChild = partMeasuresChildren[measureChildIdx];
 
-                if (measureChild.tagName !== "direction") {
+                if (!isMeasureDirection(measureChild)) {
                     if (!foundStartingTempo) {
                         console.log(
-                            `Adding implicit starting tempo - found ${measureChild.tagName} before <direction>`
+                            `Adding implicit starting tempo - found ${getTagName(measureChild)} before <direction>`
                         );
                         foundStartingTempo = true;
                         partTempos.push(IMPLICIT_TEMPO_SECTION);
@@ -170,16 +209,17 @@ export function getTempoSectionsFromSingingParts(
                 }
 
                 console.log("Looking for direction tempos");
-                const soundElements = Array.from(measureChild.querySelectorAll("sound"));
+                const soundElements = findAllChildrenByTagName<"sound", MeasureSound>(measureChild, "sound");
                 const tempoStrings = compact(map(
                     soundElements,
-                    (s) => s.getAttribute("tempo")
+                    (s) => getAttributeValue(s, "tempo")
                 ));
                 const directionTempos = map(tempoStrings, (t) => parseFloat(t));
 
                 if (directionTempos.length > 0) {
                     partTempos.push(
-                        new TempoSection(partChildIdx, measureChildIdx, first(directionTempos)!)
+                        // TODO: Handle multiple tempos in one measure
+                        new TempoSection(measureIdx, measureChildIdx, first(directionTempos)!)
                     );
                     foundStartingTempo = true;
                 }
@@ -190,141 +230,46 @@ export function getTempoSectionsFromSingingParts(
     }
 
     tempoSections.sort((a, b) => {
-        if (a.partChildIdx === b.partChildIdx) {
+        if (a.measureIdx === b.measureIdx) {
             return a.measureChildIdx - b.measureChildIdx;
         }
-        return a.partChildIdx - b.partChildIdx;
+        return a.measureIdx - b.measureIdx;
     });
 
     return tempoSections;
-}
-
-export function hasNote(xmlNode: Element): boolean {
-    return xmlNode.querySelector("note") !== null && xmlNode.querySelectorAll("note").length !== xmlNode.querySelectorAll("note rest").length;
-}
-
-function mergeNodes(
-    currNode: Element | null,
-    newNode: Element,
-    tagsToMerge: string[],
-    coExclusiveTags: string[][] = []
-): Element {
-    if (currNode === null) {
-        return newNode;
-    }
-
-    let newChildren: Element[] = [];
-
-    for (const tag of tagsToMerge) {
-        const newTagChildren = Array.from(newNode.querySelectorAll(tag));
-        const tagChildren = newTagChildren.length > 0 ? newTagChildren : Array.from(currNode.querySelectorAll(tag));
-        newChildren.push(...tagChildren);
-    }
-
-    const newChildrenTags = map(newChildren, (c) => c.tagName);
-
-    for (const coExclusiveGroup of coExclusiveTags) {
-        const coExclusiveTagsInChildren = filter(
-            coExclusiveGroup,
-            (tag) => includes(newChildrenTags, tag),
-        );
-
-        if (coExclusiveTagsInChildren.length <= 1) {
-            continue;
-        }
-
-        let tagToKeep = coExclusiveTagsInChildren[0];
-
-        for (const tag of coExclusiveTagsInChildren) {
-            if (newNode.querySelector(tag) !== null) {
-                tagToKeep = tag;
-                break;
-            }
-        }
-
-        newChildren = filter(newChildren, (c) => c.tagName === tagToKeep || !includes(coExclusiveGroup, c.tagName));
-    }
-
-    return cloneXmlElWithChanges(newNode, { newChildren });
-}
-
-export function mergePrintNodes(currNode: Element | null, nodeOrNodesToMerge: Element | Element[]): Element {
-    const nodeToMerge = Array.isArray(nodeOrNodesToMerge) ? nodeOrNodesToMerge[nodeOrNodesToMerge.length - 1] : nodeOrNodesToMerge;
-    const tagsToMerge = [
-        "page-layout",
-        "system-layout",
-        "staff-layout",
-        "measure-layout",
-        "measure-numbering",
-        "part-name-display",
-        "part-abbreviation-display"
-    ];
-
-    return mergeNodes(currNode, nodeToMerge, tagsToMerge);
-}
-
-export function mergeAttributesNodes(currNode: Element | null, nodeOrNodesToMerge: Element | Element[]): Element {
-    const nodeToMerge = Array.isArray(nodeOrNodesToMerge) ? nodeOrNodesToMerge[nodeOrNodesToMerge.length - 1] : nodeOrNodesToMerge;
-    const tagsToMerge = [
-        "footnote",
-        "level",
-        "divisions",
-        "key",
-        "time",
-        "staves",
-        "part-symbol",
-        "instruments",
-        "clef",
-        "staff-details",
-        "transpose",
-        "for-part",
-        "directive",
-        "measure-style"
-    ];
-
-    const coExclusiveTags = [["transpose", "for-part"]];
-
-    return mergeNodes(currNode, nodeToMerge, tagsToMerge, coExclusiveTags);
 }
 
 function convertMidiNoteToHertz(midiNote: number): number {
     return 440 * Math.pow(2, (midiNote - 69) / 12);
 }
 
-export function convertMusicXmlElementToHertz(el: Element): number {
-    const pitchEl = el.querySelector("pitch");
+export function convertMusicXmlElementToHertz(el: MeasureNote): number {
+    const pitchEl = findChildByTagName(el, "pitch")
     if (!pitchEl) {
         throw new Error("Pitch element not found");
     }
-    const stepEl = pitchEl.querySelector("step");
-    if (!stepEl?.textContent) {
+    const stepEl = findChildByTagName(pitchEl, "step");
+    const step = getTextNode(stepEl) as MusicXMLStep | undefined;
+    if (!step) {
         throw new Error("Step element not found");
     }
-    const step = stepEl.textContent as MusicXMLStep;
-    const octaveEl = pitchEl.querySelector("octave");
-    if (!octaveEl?.textContent) {
+
+    const octaveEl = findChildByTagName(pitchEl, "octave");
+    const octaveText = getTextNode(octaveEl);
+    if (!octaveText) {
         throw new Error("Octave element not found");
     }
-    const octave = parseInt(octaveEl.textContent, 10);
-    const alterEl = pitchEl.querySelector("alter");
-    const alter = alterEl ? parseInt(alterEl.textContent || "0", 10) : 0;
+    const octave = parseInt(octaveText, 10);
+
+    const alterEl = findChildByTagName(pitchEl, "alter");
+    const alterText = getTextNode(alterEl);
+    const alter = alterText ? parseInt(alterText || "0", 10) : 0;
 
     return convertMusicPitchParamsToHertz(step, octave, alter);
 }
 
 export function convertMusicPitchParamsToHertz(step: MusicXMLStep, octave: number, alter: number): number {
-    const stepValues: { [key in MusicXMLStep]: number } = {
-        C: 0,
-        D: 2,
-        E: 4,
-        F: 5,
-        G: 7,
-        A: 9,
-        B: 11,
-    };
-
-    const midiNote =
-        12 * (octave + 1) + stepValues[step] + alter;
+    const midiNote = 12 * (octave + 1) + stepValues[step] + alter;
     return convertMidiNoteToHertz(midiNote);
 }
 
@@ -332,15 +277,12 @@ export function durationToSeconds(duration: number, divisions: number, tempo: nu
     return (duration * 60.0) / divisions / tempo;
 }
 
-// // Example usage:
-// async function main() {
-//     const xmlPath = 'your_music_xml_file.xml';
-//     const xmlDoc = await readXmlPath(xmlPath);
+export const isMeasure = (el: any): el is Measure => isOrderedXMLNode(el) && getTagName(el) === "measure";
 
-//     // Use the functions from the module as needed
-//     const vocalParts = parseVocalPartsFromRoot(xmlDoc);
-//     const tempoSections = getTempoSectionsFromSingingParts(xmlDoc);
-//     // ...
-// }
+export const isMeasureAttributes = (el: any): el is MeasureAttributes => isOrderedXMLNode(el) && getTagName(el) === "attributes";
 
-// main();
+export const isMeasureDirection = (el: any): el is MeasureDirection => isOrderedXMLNode(el) && getTagName(el) === "direction";
+
+export const isMeasureNote = (el: any): el is MeasureNote => isOrderedXMLNode(el) && getTagName(el) === "note";
+
+export const isLyric = (el: any): el is Lyric => isOrderedXMLNode(el) && getTagName(el) === "lyric";

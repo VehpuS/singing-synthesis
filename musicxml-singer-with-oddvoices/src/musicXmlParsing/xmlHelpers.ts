@@ -1,4 +1,9 @@
-export function parseXmlText(xmlText: string): Element {
+import { filter, find, first, includes, isArray, isPlainObject, keys } from "lodash";
+import { MusicXmlJson, OrderedXMLNode, TextNode } from "./types";
+
+import { XMLParser, X2jOptionsOptional } from "fast-xml-parser";
+
+export function parseXmlTextToElement(xmlText: string): Element {
   try {
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
@@ -9,7 +14,28 @@ export function parseXmlText(xmlText: string): Element {
   }
 }
 
-export async function readXmlPath(xmlPath: string): Promise<Element> {
+const options: X2jOptionsOptional = {
+  ignoreAttributes: false,
+  attributeNamePrefix: '',
+  allowBooleanAttributes: true,
+  alwaysCreateTextNode: true,
+  ignoreDeclaration: false,
+  isArray: (tagName: string) => includes(['part', 'score-part', 'measure', 'credit', 'note'], tagName),
+  trimValues: true,
+  preserveOrder: true,
+};
+
+export function parseXmlText(xmlText: string): MusicXmlJson {
+  try {
+    const parser = new XMLParser(options);
+    return parser.parse(xmlText);
+
+  } catch (error) {
+    throw new Error(`Error reading XML: ${error}`);
+  }
+}
+
+export async function readXmlPath(xmlPath: string): Promise<MusicXmlJson> {
   try {
     const response = await fetch(xmlPath);
     if (!response.ok) {
@@ -22,44 +48,63 @@ export async function readXmlPath(xmlPath: string): Promise<Element> {
   }
 }
 
-export function getXmlChildren(el: Element): Element[] {
-  return Array.from(el.children);
+export const isOrderedXMLNode = <El extends OrderedXMLNode<string, {}, {}>>(el: any): el is El => {
+  if (!el || !isPlainObject(el)) {
+    return false;
+  }
+  const tagNameCandidates = (filter(keys(el), (key) => key !== ':@'));
+  return tagNameCandidates.length === 1 && isArray(el[first(tagNameCandidates) as keyof typeof el]);
 }
 
-export function cloneXmlElWithChanges(
-  baseEl: Element,
-  {
-    newTag,
-    newAttrib,
-    newText,
-    newChildren,
-  }: {
-    newTag?: string | null,
-    newAttrib?: Record<string, string> | null,
-    newText?: string | null,
-    newChildren?: Element[] | null,
+export const getTagName = <ElementType extends OrderedXMLNode<string, {}>>(el: ElementType | any): string | undefined => isOrderedXMLNode(el)
+  ? first(filter(keys(el), (key) => key !== ':@'))
+  : undefined;
+
+export const getAllChildren = <
+  Tag extends string = string,
+  El extends OrderedXMLNode<Tag, any> = OrderedXMLNode<Tag, any>
+>(el: El | any): El[Tag] => {
+  const tagName = getTagName(el) as Tag;
+  if (!tagName) {
+    return [] as any;
   }
-): Element {
-  const newEl = document.createElement(newTag || baseEl.tagName);
+  return el[tagName];
+}
 
-  if (newAttrib) {
-    for (const [attrName, attrValue] of Object.entries(newAttrib)) {
-      newEl.setAttribute(attrName, attrValue);
-    }
-  } else {
-    const attribs = Array.from(baseEl.attributes);
-    for (const attribute of attribs) {
-      newEl.setAttribute(attribute.name, attribute.value);
-    }
+export const findChildByTagName = <
+  ChildTag extends string,
+  ChildType extends Record<ChildTag, any> = Record<ChildTag, any>
+>(el: any, childTag: ChildTag): ChildType | undefined => {
+  if (!isOrderedXMLNode(el)) {
+    return undefined;
   }
+  const children = getAllChildren(el);
+  return find(children, (child): child is ChildType => getTagName(child) === childTag);
+}
 
-  newEl.textContent = newText || baseEl.textContent;
-
-  if (newChildren) {
-    newChildren.forEach((child) => newEl.appendChild(child.cloneNode(true)));
-  } else {
-    getXmlChildren(baseEl).forEach((child) => newEl.appendChild(child.cloneNode(true)));
+export const getTextNode = <Tag extends string = string, El extends OrderedXMLNode<Tag, TextNode> = OrderedXMLNode<Tag, TextNode>,>(el: El | undefined): string | undefined => {
+  if (!isOrderedXMLNode(el)) {
+    return undefined;
   }
+  const children = getAllChildren(el);
+  return find(children, (child): child is TextNode => Boolean((child as TextNode)['#text']))?.['#text'];
+}
 
-  return newEl;
+export const getAttributeValue = (el: any, attribute: string): string | undefined => {
+  if (!isOrderedXMLNode(el)) {
+    return undefined;
+  }
+  return (el as any)[':@']?.[attribute];
+}
+
+export const findAllChildrenByTagName = <
+  ChildTag extends string,
+  ChildType extends OrderedXMLNode<ChildTag, any> = OrderedXMLNode<ChildTag>,
+  El extends OrderedXMLNode<string, ChildType> = OrderedXMLNode<string, ChildType>,
+>(el: El | any, childTag: ChildTag): ChildType[] => {
+  if (!isOrderedXMLNode(el)) {
+    return [];
+  }
+  const children = getAllChildren(el);
+  return filter(children, (el): el is ChildType => Boolean((el as ChildType)?.[childTag as keyof ChildType]));
 }

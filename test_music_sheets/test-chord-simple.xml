@@ -2,13 +2,12 @@
 <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
 <score-partwise version="3.1">
   <work>
-    <work-title>Title</work-title>
+    <work-title>test chord simple</work-title>
     </work>
   <identification>
-    <creator type="composer">Composer</creator>
     <encoding>
       <software>MuseScore 3.6.2</software>
-      <encoding-date>2023-12-29</encoding-date>
+      <encoding-date>2024-01-06</encoding-date>
       <supports element="accidental" type="yes"/>
       <supports element="beam" type="yes"/>
       <supports element="print" attribute="new-page" type="no"/>
@@ -18,23 +17,23 @@
     </identification>
   <defaults>
     <scaling>
-      <millimeters>6.99911</millimeters>
+      <millimeters>7</millimeters>
       <tenths>40</tenths>
       </scaling>
     <page-layout>
-      <page-height>1696.94</page-height>
-      <page-width>1200.48</page-width>
+      <page-height>1697.14</page-height>
+      <page-width>1200</page-width>
       <page-margins type="even">
-        <left-margin>85.7252</left-margin>
-        <right-margin>85.7252</right-margin>
-        <top-margin>85.7252</top-margin>
-        <bottom-margin>85.7252</bottom-margin>
+        <left-margin>85.7143</left-margin>
+        <right-margin>85.7143</right-margin>
+        <top-margin>85.7143</top-margin>
+        <bottom-margin>85.7143</bottom-margin>
         </page-margins>
       <page-margins type="odd">
-        <left-margin>85.7252</left-margin>
-        <right-margin>85.7252</right-margin>
-        <top-margin>85.7252</top-margin>
-        <bottom-margin>85.7252</bottom-margin>
+        <left-margin>85.7143</left-margin>
+        <right-margin>85.7143</right-margin>
+        <top-margin>85.7143</top-margin>
+        <bottom-margin>85.7143</bottom-margin>
         </page-margins>
       </page-layout>
     <word-font font-family="Edwin" font-size="10"/>
@@ -42,35 +41,30 @@
     </defaults>
   <credit page="1">
     <credit-type>title</credit-type>
-    <credit-words default-x="600.24" default-y="1611.42" justify="center" valign="top" font-size="22">Title</credit-words>
-    </credit>
-  <credit page="1">
-    <credit-type>composer</credit-type>
-    <credit-words default-x="1114.75" default-y="1511.42" justify="right" valign="top">Composer</credit-words>
+    <credit-words default-x="600" default-y="1611.43" justify="center" valign="top" font-size="22">test chord simple</credit-words>
     </credit>
   <part-list>
     <score-part id="P1">
-      <part-name>Piano</part-name>
-      <part-abbreviation>Pno.</part-abbreviation>
+      <part-name print-object="no">Voice</part-name>
       <score-instrument id="P1-I1">
-        <instrument-name>Piano</instrument-name>
+        <instrument-name>Voice</instrument-name>
         </score-instrument>
       <midi-device id="P1-I1" port="1"></midi-device>
       <midi-instrument id="P1-I1">
         <midi-channel>1</midi-channel>
-        <midi-program>1</midi-program>
+        <midi-program>53</midi-program>
         <volume>78.7402</volume>
         <pan>0</pan>
         </midi-instrument>
       </score-part>
     </part-list>
   <part id="P1">
-    <measure number="1" width="314.26">
+    <measure number="1" width="423.25">
       <print>
         <system-layout>
           <system-margins>
             <left-margin>50.00</left-margin>
-            <right-margin>664.77</right-margin>
+            <right-margin>555.33</right-margin>
             </system-margins>
           <top-system-distance>170.00</top-system-distance>
           </system-layout>
@@ -89,38 +83,50 @@
           <line>2</line>
           </clef>
         </attributes>
-      <note default-x="77.22" default-y="-50.00">
-        <pitch>
-          <step>C</step>
-          <octave>4</octave>
-          </pitch>
-        <duration>4</duration>
-        <voice>1</voice>
-        <type>whole</type>
-        <lyric number="1" default-x="5.54" default-y="-50.26" relative-y="-30.00">
-          <syllabic>single</syllabic>
-          <text>Ah</text>
-          </lyric>
-        </note>
-      <note default-x="77.22" default-y="-40.00">
-        <chord/>
+      <note default-x="80.72" default-y="-40.00">
         <pitch>
           <step>E</step>
           <octave>4</octave>
           </pitch>
-        <duration>4</duration>
+        <duration>1</duration>
         <voice>1</voice>
-        <type>whole</type>
+        <type>quarter</type>
+        <stem>up</stem>
+        <lyric number="1" default-x="6.50" default-y="-40.25" relative-y="-30.00">
+          <syllabic>single</syllabic>
+          <text>Ah</text>
+          </lyric>
         </note>
-      <note default-x="77.22" default-y="-30.00">
+      <note default-x="172.91" default-y="-40.00">
+        <pitch>
+          <step>E</step>
+          <octave>4</octave>
+          </pitch>
+        <duration>1</duration>
+        <voice>1</voice>
+        <type>quarter</type>
+        <stem>up</stem>
+        <lyric number="1" default-x="6.50" default-y="-40.25" relative-y="-30.00">
+          <syllabic>single</syllabic>
+          <text>Bah</text>
+          </lyric>
+        </note>
+      <note default-x="172.91" default-y="-30.00">
         <chord/>
         <pitch>
           <step>G</step>
           <octave>4</octave>
           </pitch>
-        <duration>4</duration>
+        <duration>1</duration>
         <voice>1</voice>
-        <type>whole</type>
+        <type>quarter</type>
+        <stem>up</stem>
+        </note>
+      <note>
+        <rest/>
+        <duration>2</duration>
+        <voice>1</voice>
+        <type>half</type>
         </note>
       <barline location="right">
         <bar-style>light-heavy</bar-style>
