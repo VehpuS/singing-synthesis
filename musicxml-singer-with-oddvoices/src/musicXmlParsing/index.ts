@@ -1,6 +1,6 @@
-import { compact, first, flatMap, forEach, map, times, uniq } from "lodash";
+import { compact, first, flatMap, map, times, uniq } from "lodash";
 
-import { MeasureAttributes, MeasureDirection, MeasureNote, MeasureSound, MusicXMLStep, ScorePart, ScorePartMeasures, Measure, TempoSection, stepValues, Lyric, ScorePartwise } from "./types";
+import { MeasureAttributes, MeasureDirection, MeasureNote, MusicXMLStep, ScorePart, ScorePartMeasures, Measure, stepValues, Lyric, ScorePartwise, OrderedXMLNode, TextNode } from "./types";
 import { findAllChildrenByTagName, findChildByTagName, getAllChildren, getAttributeValue, getTagName, getTextNode, isOrderedXMLNode } from "./xmlHelpers";
 
 export const DEFAULT_TEMPO = 120.0;
@@ -19,7 +19,7 @@ export function scorePartwiseToPartNameList(scorePartwise: ScorePartwise): strin
     const scoreParts = findAllChildrenByTagName<"score-part", ScorePart>(partList, "score-part");
     return compact(map(
         scoreParts,
-        (el) => getTextNode(findChildByTagName(el, "part-name"))
+        (el) => getTextNode(findChildByTagName(el, "part-name") as OrderedXMLNode<string, TextNode>)
     ));
 }
 
@@ -29,25 +29,8 @@ export const getClefSignFromPart = (part: ScorePartMeasures): string | undefined
     const attributes = findChildByTagName(firstMeasure, "attributes");
     const clef = findChildByTagName(attributes, "clef");
     const sign = findChildByTagName(clef, "sign");
-    const signText = getTextNode(sign);
+    const signText = getTextNode(sign as OrderedXMLNode<string, TextNode>);
     return signText;
-}
-
-export function rootToPercussionIndices(scorePartwise: ScorePartwise): number[] {
-    const indices: number[] = [];
-    const allPartMeasures = findAllChildrenByTagName<"part", ScorePartMeasures>(scorePartwise, "part");
-    const clefSigns = flatMap(allPartMeasures, (partMeasures) => {
-        const signText = getClefSignFromPart(partMeasures);
-        return signText ? [signText] : [];
-    });
-
-    forEach(clefSigns, (el, index) => {
-        if (el === "percussion") {
-            indices.push(index);
-        }
-    });
-
-    return indices;
 }
 
 export function parseVocalPartsFromRoot(scorePartwise: ScorePartwise): MusicXMLPart[] {
@@ -71,7 +54,7 @@ export function parseVocalPartsFromRoot(scorePartwise: ScorePartwise): MusicXMLP
         const voices = uniq(compact(
             flatMap(
                 partNodeChildren,
-                (measure) => map(findAllChildrenByTagName<"note", MeasureNote>(measure, "note"), (el) => getTextNode(findChildByTagName(el, "voice")))
+                (measure) => map(findAllChildrenByTagName<"note", MeasureNote>(measure, "note"), (el) => getTextNode(findChildByTagName(el, "voice") as OrderedXMLNode<string, TextNode>))
             )
         ));
 
@@ -141,104 +124,6 @@ export function parseVocalPartsFromRoot(scorePartwise: ScorePartwise): MusicXMLP
     return parsedParts;
 }
 
-export function getTempoSectionsFromSingingParts(
-    scorePartwise: ScorePartwise,
-    defaultTempo = DEFAULT_TEMPO
-): TempoSection[] {
-    const IMPLICIT_TEMPO_SECTION = new TempoSection(0, 0, defaultTempo);
-    const tempoSections: TempoSection[] = [];
-    const partNames = scorePartwiseToPartNameList(scorePartwise);
-    const parts = findAllChildrenByTagName<"part", ScorePartMeasures>(scorePartwise, "part")
-
-    for (let partIdx = 0; partIdx < partNames.length; partIdx++) {
-        const partName = partNames[partIdx];
-        if (!partName) {
-            continue;
-        }
-        const partNode = parts[partIdx];
-        const partMeasures = findAllChildrenByTagName<"measure", Measure>(partNode, "measure")
-        if (!partMeasures) {
-            continue;
-        }
-        const firstMeasure = first(partMeasures);
-        if (!firstMeasure) {
-            continue;
-        }
-        const attributes = findChildByTagName(firstMeasure, "attributes");
-        if (!attributes) {
-            continue;
-        }
-        const clefNode = findChildByTagName(attributes, "clef");
-        if (!clefNode) {
-            continue;
-        }
-        const clefSign = findChildByTagName(clefNode, "sign");
-        if (!clefSign) {
-            continue;
-        }
-
-        const clefSignText = findChildByTagName(clefSign, "#text");
-        if (!clefSignText || getTagName(clefSignText) === "percussion") {
-            continue;
-        }
-
-        let foundStartingTempo = false;
-        const partTempos: TempoSection[] = [];
-
-        for (let measureIdx = 0; measureIdx < partMeasures.length; measureIdx++) {
-            const currentMeasure = partMeasures[measureIdx];
-
-
-            const partMeasuresChildren = getAllChildren<"measure", Measure>(currentMeasure);
-            if ((partMeasuresChildren || []).length === 0) {
-                continue;
-            }
-
-            for (let measureChildIdx = 0; measureChildIdx < partMeasuresChildren.length; measureChildIdx++) {
-                const measureChild = partMeasuresChildren[measureChildIdx];
-
-                if (!isMeasureDirection(measureChild)) {
-                    if (!foundStartingTempo) {
-                        console.log(
-                            `Adding implicit starting tempo - found ${getTagName(measureChild)} before <direction>`
-                        );
-                        foundStartingTempo = true;
-                        partTempos.push(IMPLICIT_TEMPO_SECTION);
-                    }
-                    continue;
-                }
-
-                console.log("Looking for direction tempos");
-                const soundElements = findAllChildrenByTagName<"sound", MeasureSound>(measureChild, "sound");
-                const tempoStrings = compact(map(
-                    soundElements,
-                    (s) => getAttributeValue(s, "tempo")
-                ));
-                const directionTempos = map(tempoStrings, (t) => parseFloat(t));
-
-                if (directionTempos.length > 0) {
-                    partTempos.push(
-                        // TODO: Handle multiple tempos in one measure
-                        new TempoSection(measureIdx, measureChildIdx, first(directionTempos)!)
-                    );
-                    foundStartingTempo = true;
-                }
-            }
-        }
-
-        tempoSections.push(...partTempos);
-    }
-
-    tempoSections.sort((a, b) => {
-        if (a.measureIdx === b.measureIdx) {
-            return a.measureChildIdx - b.measureChildIdx;
-        }
-        return a.measureIdx - b.measureIdx;
-    });
-
-    return tempoSections;
-}
-
 function convertMidiNoteToHertz(midiNote: number): number {
     return 440 * Math.pow(2, (midiNote - 69) / 12);
 }
@@ -249,20 +134,20 @@ export function convertMusicXmlElementToHertz(el: MeasureNote): number {
         throw new Error("Pitch element not found");
     }
     const stepEl = findChildByTagName(pitchEl, "step");
-    const step = getTextNode(stepEl) as MusicXMLStep | undefined;
+    const step = getTextNode(stepEl as OrderedXMLNode<string, TextNode>) as MusicXMLStep | undefined;
     if (!step) {
         throw new Error("Step element not found");
     }
 
     const octaveEl = findChildByTagName(pitchEl, "octave");
-    const octaveText = getTextNode(octaveEl);
+    const octaveText = getTextNode(octaveEl as OrderedXMLNode<string, TextNode>);
     if (!octaveText) {
         throw new Error("Octave element not found");
     }
     const octave = parseInt(octaveText, 10);
 
     const alterEl = findChildByTagName(pitchEl, "alter");
-    const alterText = getTextNode(alterEl);
+    const alterText = getTextNode(alterEl as OrderedXMLNode<string, TextNode>);
     const alter = alterText ? parseInt(alterText || "0", 10) : 0;
 
     return convertMusicPitchParamsToHertz(step, octave, alter);
@@ -277,12 +162,12 @@ export function durationToSeconds(duration: number, divisions: number, tempo: nu
     return (duration * 60.0) / divisions / tempo;
 }
 
-export const isMeasure = (el: any): el is Measure => isOrderedXMLNode(el) && getTagName(el) === "measure";
+export const isMeasure = (el: unknown): el is Measure => isOrderedXMLNode(el) && getTagName(el) === "measure";
 
-export const isMeasureAttributes = (el: any): el is MeasureAttributes => isOrderedXMLNode(el) && getTagName(el) === "attributes";
+export const isMeasureAttributes = (el: unknown): el is MeasureAttributes => isOrderedXMLNode(el) && getTagName(el) === "attributes";
 
-export const isMeasureDirection = (el: any): el is MeasureDirection => isOrderedXMLNode(el) && getTagName(el) === "direction";
+export const isMeasureDirection = (el: unknown): el is MeasureDirection => isOrderedXMLNode(el) && getTagName(el) === "direction";
 
-export const isMeasureNote = (el: any): el is MeasureNote => isOrderedXMLNode(el) && getTagName(el) === "note";
+export const isMeasureNote = (el: unknown): el is MeasureNote => isOrderedXMLNode(el) && getTagName(el) === "note";
 
-export const isLyric = (el: any): el is Lyric => isOrderedXMLNode(el) && getTagName(el) === "lyric";
+export const isLyric = (el: unknown): el is Lyric => isOrderedXMLNode(el) && getTagName(el) === "lyric";

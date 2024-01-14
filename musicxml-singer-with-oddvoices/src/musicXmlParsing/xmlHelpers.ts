@@ -48,7 +48,7 @@ export async function readXmlPath(xmlPath: string): Promise<MusicXmlJson> {
   }
 }
 
-export const isOrderedXMLNode = <El extends OrderedXMLNode<string, {}, {}>>(el: any): el is El => {
+export const isOrderedXMLNode = <El extends OrderedXMLNode<string, object, object>>(el: unknown): el is El => {
   if (!el || !isPlainObject(el)) {
     return false;
   }
@@ -56,25 +56,25 @@ export const isOrderedXMLNode = <El extends OrderedXMLNode<string, {}, {}>>(el: 
   return tagNameCandidates.length === 1 && isArray(el[first(tagNameCandidates) as keyof typeof el]);
 }
 
-export const getTagName = <ElementType extends OrderedXMLNode<string, {}>>(el: ElementType | any): string | undefined => isOrderedXMLNode(el)
+export const getTagName = <ElementType extends OrderedXMLNode<string, object>>(el: ElementType | unknown): string | undefined => isOrderedXMLNode(el)
   ? first(filter(keys(el), (key) => key !== ':@'))
   : undefined;
 
 export const getAllChildren = <
   Tag extends string = string,
-  El extends OrderedXMLNode<Tag, any> = OrderedXMLNode<Tag, any>
->(el: El | any): El[Tag] => {
+  El extends OrderedXMLNode<Tag, object> = OrderedXMLNode<Tag, object>
+>(el: El | unknown): El[Tag] => {
   const tagName = getTagName(el) as Tag;
   if (!tagName) {
-    return [] as any;
+    return [] as unknown as El[Tag];
   }
-  return el[tagName];
+  return (el as El)[tagName];
 }
 
 export const findChildByTagName = <
   ChildTag extends string,
-  ChildType extends Record<ChildTag, any> = Record<ChildTag, any>
->(el: any, childTag: ChildTag): ChildType | undefined => {
+  ChildType extends Record<ChildTag, unknown> = Record<ChildTag, unknown>
+  >(el: unknown, childTag: ChildTag): ChildType | undefined => {
   if (!isOrderedXMLNode(el)) {
     return undefined;
   }
@@ -90,18 +90,18 @@ export const getTextNode = <Tag extends string = string, El extends OrderedXMLNo
   return find(children, (child): child is TextNode => Boolean((child as TextNode)['#text']))?.['#text'];
 }
 
-export const getAttributeValue = (el: any, attribute: string): string | undefined => {
+export const getAttributeValue = (el: unknown, attribute: string): string | undefined => {
   if (!isOrderedXMLNode(el)) {
     return undefined;
   }
-  return (el as any)[':@']?.[attribute];
+  return ((el)[':@'] as Record<string, string>)?.[attribute];
 }
 
 export const findAllChildrenByTagName = <
   ChildTag extends string,
-  ChildType extends OrderedXMLNode<ChildTag, any> = OrderedXMLNode<ChildTag>,
+  ChildType extends OrderedXMLNode<ChildTag> = OrderedXMLNode<ChildTag>,
   El extends OrderedXMLNode<string, ChildType> = OrderedXMLNode<string, ChildType>,
->(el: El | any, childTag: ChildTag): ChildType[] => {
+>(el: El | unknown, childTag: ChildTag): ChildType[] => {
   if (!isOrderedXMLNode(el)) {
     return [];
   }

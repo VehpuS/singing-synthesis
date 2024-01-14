@@ -21,14 +21,14 @@ export class TempoSection {
 
 export interface TextNode { '#text'?: string }
 
-export interface AttributesNode<Attributes extends {} = {}> {
+export interface AttributesNode<Attributes extends object = object> {
     ':@'?: Attributes;
 }
 
-export type OrderedXMLNode<Tag extends string, Children extends {} = TextNode, Attributes extends {} = {}> =
+export type OrderedXMLNode<Tag extends string, Children extends object = TextNode | object, Attributes extends object = object> =
     Record<Tag, Array<Children>> & (AttributesNode<Attributes>);
 
-export type OrderedXMLNodeTag<El extends OrderedXMLNode<string, {}>> = keyof El;
+export type OrderedXMLNodeTag<El extends OrderedXMLNode<string, object>> = keyof El;
 
 export type ScorePart = OrderedXMLNode<
     'score-part',
@@ -74,7 +74,7 @@ export type Pitch = OrderedXMLNode<'pitch',
 >
 
 export type MeasureNote = OrderedXMLNode<'note',
-    | OrderedXMLNode<'rest', {}>
+    | OrderedXMLNode<'rest', object>
     | OrderedXMLNode<'voice'>
     | Pitch
     | OrderedXMLNode<'duration'>
@@ -168,9 +168,9 @@ export type ScorePartwise = OrderedXMLNode<
     | OrderedXMLNode<'identification',
         | OrderedXMLNode<'creator', TextNode, { 'type': string }>
         | OrderedXMLNode<'rights', TextNode>
-        | OrderedXMLNode<'encoding', any>
+        | OrderedXMLNode<'encoding'>
     >
-    | OrderedXMLNode<'credit', any>
+    | OrderedXMLNode<'credit'>
     | ScorePartwiseDefaults
     // There are more element types, but we don't need them
     | ScorePartList
@@ -179,7 +179,7 @@ export type ScorePartwise = OrderedXMLNode<
     { 'version': string, }
 >
 
-export type MusicXmlHeader = OrderedXMLNode<"xml", {}, { version: string, encoding: string, }>;
+export type MusicXmlHeader = OrderedXMLNode<"xml", object, { version: string, encoding: string, }>;
 
 export type MusicXmlJson = [MusicXmlHeader, ScorePartwise,];
 

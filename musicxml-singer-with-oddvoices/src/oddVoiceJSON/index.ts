@@ -2,7 +2,7 @@ import { Dictionary, compact, filter, findLast, findLastIndex, flatMap, forEach,
 import { EventType, OddVoiceJSON, createdOddVoiceJSONEvent } from "./oddVoiceHelpers";
 import { DEFAULT_TEMPO, convertMusicXmlElementToHertz, durationToSeconds, isLyric, isMeasureAttributes, isMeasureDirection, isMeasureNote, parseVocalPartsFromRoot } from "../musicXmlParsing";
 import { LETTERS_TO_AVOID_APPENDING, LYRICS_TO_CONSIDER_AS_CONTINUATIONS } from "./lyricsHelpers";
-import { MeasureSound, MusicXmlJson, ScorePart, Measure, ScorePartMeasures, MusicXmlLyricsEvent, MusicXmlTempoEvent, MusicXmlNoteEvent, MeasureAttributes, MeasureDirection, MeasureNote, MeasurePrint } from "../musicXmlParsing/types";
+import { MeasureSound, MusicXmlJson, ScorePart, Measure, MusicXmlLyricsEvent, MusicXmlTempoEvent, MusicXmlNoteEvent, MeasureAttributes, MeasureDirection, MeasureNote, MeasurePrint, OrderedXMLNode, TextNode, ScorePartList } from "../musicXmlParsing/types";
 import { findAllChildrenByTagName, findChildByTagName, getAllChildren, getAttributeValue, getTagName, getTextNode, isOrderedXMLNode } from "../musicXmlParsing/xmlHelpers";
 
 export interface SplitParams {
@@ -37,7 +37,7 @@ const parseTempoChangesFromMeasureChild = ({
     const tempoEvents: MusicXmlTempoEvent[] = [];
 
     if (isMeasureAttributes(measureChild)) {
-        const divisionsEl = findChildByTagName(measureChild, "divisions");
+        const divisionsEl = findChildByTagName(measureChild, "divisions") as OrderedXMLNode<string, TextNode>;
         const divisionsText = getTextNode(divisionsEl);
         if (divisionsText) {
             console.info(`Found new divisions ${divisionsText}`);
@@ -96,17 +96,20 @@ export const musicXMLToEvents = (
         throw new Error("Could not find part-list");
     }
 
-    const partNames = compact(
+    const partNames = compact<string>(
+        // @ts-expect-error - TODO: fix this
         map(
-            findAllChildrenByTagName<"score-part", ScorePart>(basePartList, "score-part"),
-            (scorePart) => {
+            findAllChildrenByTagName(basePartList as ScorePartList, "score-part"),
+            (scorePart: ScorePart): string | undefined => {
                 const partNameEl = findChildByTagName(scorePart, "part-name");
-                return partNameEl && getTextNode(partNameEl);
+                return partNameEl
+                    ? getTextNode(partNameEl as OrderedXMLNode<string, TextNode>) as string | undefined
+                    : undefined;
             })
     );
-    const allPartMeasures = findAllChildrenByTagName<"part", ScorePartMeasures>(scorePartwise, "part");
+    const allPartMeasures = findAllChildrenByTagName<"part">(scorePartwise, "part");
 
-    const allPartsMeasures = map(allPartMeasures, (part) => findAllChildrenByTagName<"measure", Measure>(part, "measure"));
+    const allPartsMeasures = map(allPartMeasures, (part) => findAllChildrenByTagName(part, "measure") as unknown as Measure[]);
 
     const tempoEvents: MusicXmlTempoEvent[] = [];
     const noteEvents: MusicXmlNoteEvent[] = [];
@@ -158,11 +161,11 @@ export const musicXMLToEvents = (
                     !isNaN(Number(e.tempo))
             )?.tempo ?? DEFAULT_TEMPO;
 
-            let currentChordDurationPerPartAndVoice: Dictionary<Dictionary<number>> = {};
+            const currentChordDurationPerPartAndVoice: Dictionary<Dictionary<number>> = {};
             let currChordLvl = 0;
             forEach(measureChildren, (measureChild, measureChildIdx) => {
                 const voiceEl = findChildByTagName(measureChild, "voice");
-                const voiceText = getTextNode(voiceEl);
+                const voiceText = getTextNode(voiceEl as OrderedXMLNode<string, TextNode>);
                 if (voiceText) {
                     currentVoice = parseInt(voiceText, 10);
                 }
@@ -187,9 +190,9 @@ export const musicXMLToEvents = (
 
                     const durationEl = findChildByTagName(measureChild, "duration");
                     if (durationEl) {
-                        const durationText = getTextNode(durationEl);
+                        const durationText = getTextNode(durationEl as OrderedXMLNode<string, TextNode>);
                         if (!durationText) {
-                            throw new Error(`No duration text content: ${durationEl}`);
+                            throw new Error(`No duration text content: ${JSON.stringify(durationEl)}`);
                         }
                         const isBackup = getTagName(measureChild) === "backup";
                         const duration = parseFloat(durationText) * (isBackup ? -1 : 1);
@@ -274,7 +277,7 @@ export const musicXMLToEvents = (
                             return;
                         }
 
-                        const newTextString = getTextNode(textEl)?.trim() ?? "";
+                        const newTextString = getTextNode(textEl as OrderedXMLNode<string, TextNode>)?.trim() ?? "";
                         if (!newTextString || (
                             LYRICS_TO_CONSIDER_AS_CONTINUATIONS.includes(newTextString)
                         )) {
@@ -300,7 +303,7 @@ export const musicXMLToEvents = (
                         }
 
                         const syllabicEl = findChildByTagName(lyricEl, "syllabic");
-                        const syllabicText = getTextNode(syllabicEl);
+                        const syllabicText = getTextNode(syllabicEl as OrderedXMLNode<string, TextNode>);
                         if (
                             !syllabicText
                             // Always add the first syllable
@@ -372,7 +375,7 @@ export const musicXMLToEvents = (
                     const lyricsChanged = Boolean(newLyricText);
 
                     const durationEl = findChildByTagName(measureChild, "duration");
-                    const durationText = getTextNode(durationEl);
+                    const durationText = getTextNode(durationEl as OrderedXMLNode<string, TextNode>);
                     if (!durationText) {
                         throw new Error(`No duration element found: ${JSON.stringify(measureChild)}`);
                     }
@@ -411,12 +414,112 @@ export const musicXMLToEvents = (
     };
 }
 
+export const generateOddVoiceJsonForSplit = ({
+    splitParams,
+    noteEvents,
+}: {
+    splitParams: SplitParams,
+    noteEvents: MusicXmlNoteEvent[],
+}): OddVoiceJSON => {
+    const partJson: OddVoiceJSON = { lyrics: "", events: [], };
+
+    const splitNoteEvents = filter(
+        noteEvents,
+        (e) =>
+            e.partIdx === splitParams.partIdx &&
+            e.voice === splitParams.voice &&
+            e.chordLevel === splitParams.chordLvl,
+    );
+
+    partJson.lyrics = map(splitNoteEvents, (e) => e.lyrics ?? "").join("").trim();
+    partJson.events = flatMap(splitNoteEvents, ({
+        time: timeElapsed,
+        frequency,
+        lyricsChanged,
+        isStaccato,
+        eventSeconds,
+        isRest,
+    }) => {
+        const newEvents = [];
+        if (isRest) {
+            newEvents.push(
+                createdOddVoiceJSONEvent({
+                    eventType: EventType.NoteOff,
+                    time: timeElapsed,
+                })
+            );
+            newEvents.push(
+                createdOddVoiceJSONEvent({
+                    eventType: EventType.Empty,
+                    time: timeElapsed,
+                })
+            );
+        } else {
+            if (lyricsChanged) {
+                // Add a note off event before the new lyrics
+                console.log("Found new lyrics");
+                newEvents.push(
+                    createdOddVoiceJSONEvent({
+                        eventType: EventType.NoteOff,
+                        time: timeElapsed,
+                    })
+                );
+            }
+            newEvents.push(
+                createdOddVoiceJSONEvent({
+                    eventType: EventType.SetTargetFrequency,
+                    time: timeElapsed,
+                    frequency,
+                })
+            );
+            if (lyricsChanged) {
+                newEvents.push(
+                    createdOddVoiceJSONEvent({
+                        eventType: EventType.NoteOn,
+                        time: timeElapsed,
+                    })
+                );
+
+                if (isStaccato) {
+                    newEvents.push(
+                        createdOddVoiceJSONEvent({
+                            eventType: EventType.SetPhonemeSpeed,
+                            time: timeElapsed,
+                            phonemeSpeed: 1.5,
+                        })
+                    );
+                    newEvents.push(
+                        createdOddVoiceJSONEvent({
+                            eventType: EventType.SetPhonemeSpeed,
+                            time: timeElapsed + (eventSeconds ?? 0),
+                            phonemeSpeed: 1.0,
+                        })
+                    );
+                }
+            }
+        }
+
+        return newEvents;
+    });
+
+    const lastEvent = last(splitNoteEvents);
+    if (lastEvent) {
+        if (!lastEvent.isRest) {
+            partJson.events.push(
+                createdOddVoiceJSONEvent({
+                    eventType: EventType.NoteOff,
+                    time: lastEvent.time + (lastEvent.eventSeconds ?? 0),
+                })
+            );
+        }
+    }
+
+    return partJson;
+}
+
 export const createSplitOddVoiceJsonInputsFromMusicXml = (
     parsedMusicXml: MusicXmlJson,
-): Array<{
-    output: OddVoiceJSON,
-    splitParams: SplitParams,
-}> => {
+): Array<{ output: OddVoiceJSON; splitParams: SplitParams; }> => {
     const scorePartwise = parsedMusicXml[1];
     const partsDetails = parseVocalPartsFromRoot(scorePartwise);
 
@@ -430,109 +533,8 @@ export const createSplitOddVoiceJsonInputsFromMusicXml = (
                 largestChordLvl: p.largestChordPerVoice[voiceIdx],
             }))));
 
-    const events = musicXMLToEvents(parsedMusicXml);
-    console.log({ partsDetails, splitsToGenerate, events });
-
-    return map(splitsToGenerate, (splitParams) => {
-        const partJson: OddVoiceJSON = {
-            lyrics: "",
-            events: [],
-        };
-
-        const splitNoteEvents = filter(
-            events.noteEvents,
-            (e) =>
-                e.partIdx === splitParams.partIdx &&
-                e.voice === splitParams.voice &&
-                e.chordLevel === splitParams.chordLvl,
-        );
-
-        partJson.lyrics = map(splitNoteEvents, (e) => e.lyrics || "").join("").trim();
-        partJson.events = flatMap(splitNoteEvents, ({
-            time: timeElapsed,
-            frequency,
-            lyricsChanged,
-            isStaccato,
-            eventSeconds,
-            isRest,
-        }) => {
-            const newEvents = [];
-            if (isRest) {
-                newEvents.push(
-                    createdOddVoiceJSONEvent({
-                        eventType: EventType.NoteOff,
-                        time: timeElapsed,
-                    })
-                );
-                newEvents.push(
-                    createdOddVoiceJSONEvent({
-                        eventType: EventType.Empty,
-                        time: timeElapsed,
-                    })
-                );
-            } else {
-                if (lyricsChanged) {
-                    // Add a note off event before the new lyrics
-                    console.log("Found new lyrics");
-                    newEvents.push(
-                        createdOddVoiceJSONEvent({
-                            eventType: EventType.NoteOff,
-                            time: timeElapsed,
-                        })
-                    );
-                }
-                newEvents.push(
-                    createdOddVoiceJSONEvent({
-                        eventType: EventType.SetTargetFrequency,
-                        time: timeElapsed,
-                        frequency,
-                    })
-                );
-                if (lyricsChanged) {
-                    newEvents.push(
-                        createdOddVoiceJSONEvent({
-                            eventType: EventType.NoteOn,
-                            time: timeElapsed,
-                        })
-                    );
-
-                    if (isStaccato) {
-                        newEvents.push(
-                            createdOddVoiceJSONEvent({
-                                eventType: EventType.SetPhonemeSpeed,
-                                time: timeElapsed,
-                                phonemeSpeed: 1.5,
-                            })
-                        );
-                        newEvents.push(
-                            createdOddVoiceJSONEvent({
-                                eventType: EventType.SetPhonemeSpeed,
-                                time: timeElapsed + (eventSeconds ?? 0),
-                                phonemeSpeed: 1.0,
-                            })
-                        );
-                    }
-                }
-            }
-
-            return newEvents;
-        });
-
-        const lastEvent = last(splitNoteEvents);
-        if (lastEvent) {
-            if (!lastEvent.isRest) {
-                partJson.events.push(
-                    createdOddVoiceJSONEvent({
-                        eventType: EventType.NoteOff,
-                        time: lastEvent.time + (lastEvent.eventSeconds ?? 0),
-                    })
-                );
-            }
-        }
-
-        return {
-            output: partJson,
-            splitParams,
-        }
-    });
+    return map(splitsToGenerate, (splitParams: SplitParams) => ({
+        splitParams,
+        output: generateOddVoiceJsonForSplit({ splitParams, ...musicXMLToEvents(parsedMusicXml), }),
+    }));
 }
