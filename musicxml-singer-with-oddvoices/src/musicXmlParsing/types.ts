@@ -182,3 +182,39 @@ export type ScorePartwise = OrderedXMLNode<
 export type MusicXmlHeader = OrderedXMLNode<"xml", {}, { version: string, encoding: string, }>;
 
 export type MusicXmlJson = [MusicXmlHeader, ScorePartwise,];
+
+export interface MusicXmlNoteEvent {
+    time: number,
+    partIdx: number,
+    partName: string,
+    measureIdx: number,
+    voice: number,
+    chordLevel: number,
+    frequency?: number,
+    eventSeconds?: number,
+    isRest?: boolean,
+    lyricsChanged?: boolean,
+    lyrics?: string,
+    isStaccato?: boolean,
+}
+
+export interface MusicXmlTempoEvent {
+    time: number,
+    partIdx: number,
+    partName: string,
+    measureIdx: number,
+    tempo?: number,
+    divisions?: number,
+}
+
+export interface MusicXmlLyricsEvent {
+    time: number,
+    partIdx: number,
+    partName: string,
+    measureIdx: number,
+    voice: number,
+    chordLevel: number,
+    duration?: number,
+    lyric?: string,
+    continuesPrevious?: boolean,
+}
