@@ -1,7 +1,7 @@
 import { filter, find, first, includes, isArray, isPlainObject, keys } from "lodash";
-import { MusicXmlJson, OrderedXMLNode, TextNode } from "./types";
+import { X2jOptions, XMLParser } from "fast-xml-parser";
 
-import { XMLParser, X2jOptionsOptional } from "fast-xml-parser";
+import { MusicXmlJson, OrderedXMLNode, TextNode } from "./types";
 
 export function parseXmlTextToElement(xmlText: string): Element {
   try {
@@ -14,7 +14,7 @@ export function parseXmlTextToElement(xmlText: string): Element {
   }
 }
 
-const options: X2jOptionsOptional = {
+const options: X2jOptions = {
   ignoreAttributes: false,
   attributeNamePrefix: '',
   allowBooleanAttributes: true,

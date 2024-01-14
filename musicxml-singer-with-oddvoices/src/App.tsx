@@ -1,11 +1,13 @@
-import React from 'react';
-import './App.css';
+import React from "react";
+import { map } from "lodash";
+
 import { SplitParams, createSplitOddVoiceJsonInputsFromMusicXml } from "./oddVoiceJSON";
 import { parseXmlText } from "./musicXmlParsing/xmlHelpers";
 import { OddVoiceJSON } from "./oddVoiceJSON/oddVoiceHelpers";
-import { map } from "lodash";
 
-export const App = () => {
+import './App.css'
+
+function App() {
   const [oddVoiceOutputs, setOddVoiceOutputs] = React.useState<Array<{
     output: OddVoiceJSON;
     splitParams: SplitParams;
@@ -54,4 +56,4 @@ export const App = () => {
   );
 }
 
-export default App;
+export default App
