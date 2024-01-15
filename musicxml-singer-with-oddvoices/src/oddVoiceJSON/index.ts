@@ -444,7 +444,7 @@ export const musicXMLToEvents = (
                         const duration = parseFloat(durationText);
 
                         const eventSeconds = durationToSeconds(duration, currentDivisions, currentTempo);
-                        const frequency = convertMusicXmlElementToHertz(measureChild);
+                        const { frequency, isUnpitched } = convertMusicXmlElementToHertz(measureChild);
                         console.log(
                             `Note number ${measureChildIdx} with duration ${duration} (${eventSeconds} seconds) and frequency ${frequency}`
                         );

@@ -32,6 +32,15 @@ function App() {
         }
         reader.readAsText(file)
       }} />
+      {oddVoiceOutputs.length > 0 && (
+        <button onClick={() => {
+          const allAnchors = document.querySelectorAll("a.part-downloads");
+          allAnchors.forEach((anchor) => {
+            (anchor as HTMLAnchorElement).click();
+          });
+        }
+        }>Download All</button>
+      )}
       {map(oddVoiceOutputs, (oddVoiceOutput, i) => {
         const fileName = `${oddVoiceOutput.splitParams.partName
           }_(voice_${oddVoiceOutput.splitParams.voice
@@ -41,11 +50,11 @@ function App() {
           }.json`;
         return (
           <div key={i}>
-            <h2>Part {i}</h2>
-            <a href={`data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(oddVoiceOutput.output, null, 2))}`} download={fileName}>
-              Download JSON - {oddVoiceOutput.splitParams.partName} (voice {oddVoiceOutput.splitParams.voice}) - {
+            <h2>Part {i + 1}</h2>
+            <a className="part-downloads" href={`data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(oddVoiceOutput.output, null, 2))}`} download={fileName}>
+              Download JSON - {oddVoiceOutput.splitParams.partName} (voice {oddVoiceOutput.splitParams.voice}){
                 oddVoiceOutput.splitParams.largestChordLvl > 1
-                  ? `chord level ${oddVoiceOutput.splitParams.chordLvl}/${oddVoiceOutput.splitParams.largestChordLvl}`
+                  ? ` - chord level ${oddVoiceOutput.splitParams.chordLvl}/${oddVoiceOutput.splitParams.largestChordLvl}`
                   : ``
               }
             </a>
