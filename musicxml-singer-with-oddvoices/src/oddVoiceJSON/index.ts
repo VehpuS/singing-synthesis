@@ -324,7 +324,7 @@ export const musicXMLToEvents = (
 
                         const previousLyricText = reduce(
                             latestLyricEvents,
-                            (acc, e) => acc + (e.continuesPrevious ? "" : " ") + e.lyric,
+                            (acc, e) => (acc + (e.continuesPrevious ? "" : " ") + e.lyric).trim(),
                             ""
                         );
                         let newLyricText = "";
@@ -394,7 +394,7 @@ export const musicXMLToEvents = (
                             // If the previous lyrics ended in or are a vowel and the new lyric is the same, skip it
                             // Only add the new lyric if it starts with a different letter
                             const lastLetterInPreviousLyric = last(previousLyricText);
-                            let firstNewLetter = 0;
+                            let firstNewLetter = newTextString.length;
 
                             for (let i = 0; i < newTextString.length; i++) {
                                 if (newTextString[i] !== lastLetterInPreviousLyric) {
@@ -421,20 +421,21 @@ export const musicXMLToEvents = (
                             }
                         });
 
-                        if (!hasVoiceLyric && previousLyricText && !newLyricText) {
-                            // If voice has no lyrics, but the part does, add the previous lyric
-                            newLyricText += previousLyricText;
-                            lyricsEvents.push({
-                                time: timeElapsedForPartAndVoice,
-                                partIdx,
-                                partName,
-                                measureIdx,
-                                chordLevel: currChordLvl,
-                                voice: currentVoice,
-                                lyric: previousLyricText,
-                                continuesPrevious: false,
-                            });
-                        }
+                        // if (!hasVoiceLyric && previousLyricText && !newLyricText) {
+                        //     // If voice has no lyrics, but the part does, add the previous lyric
+                        //     console.log("Adding previous lyric", { previousLyricText });
+                        //     newLyricText += previousLyricText;
+                        //     lyricsEvents.push({
+                        //         time: timeElapsedForPartAndVoice,
+                        //         partIdx,
+                        //         partName,
+                        //         measureIdx,
+                        //         chordLevel: currChordLvl,
+                        //         voice: currentVoice,
+                        //         lyric: previousLyricText,
+                        //         continuesPrevious: false,
+                        //     });
+                        // }
 
                         const lyricsChanged = Boolean(newLyricText);
 
@@ -463,6 +464,7 @@ export const musicXMLToEvents = (
                             lyricsChanged,
                             lyrics: newLyricText,
                             isStaccato: Boolean(staccatoEl),
+                            isUnpitched,
                         });
                         const currentChordDuration =
                             currentChordDurationPerPartAndVoice?.[partIdx]?.[currentVoice] ?? 0;
