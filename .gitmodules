@@ -1,0 +1,3 @@
+[submodule "musicxml-singer-with-oddvoices/src/oddvoices/cpp/oddvoices"]
+	path = musicxml-singer-with-oddvoices/src/oddvoices/cpp/oddvoices
+	url = https://gitlab.com/oddvoices/oddvoices

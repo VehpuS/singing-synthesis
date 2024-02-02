@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>OddVoices Web</title>
+    <link rel="stylesheet" href="style.css">
+    <meta name="description" content="A Web interface for the OddVoices singing synthesizer.">
+    <script src="js/app.js" defer></script>
+    <script src="js/oddvoices_wasm.js" defer></script>
+  </head>
+  <body>
+    <div id="container">
+      <div id="container-inner">
+        <div id="on-loaded-container">
+          <h1>OddVoices (alpha)</h1>
+          <p>Text (leave blank to use MIDI lyrics):</p>
+          <textarea rows="10" cols="80" id="text"></textarea>
+          <p>Upload MIDI file:</p>
+          <input type="file" id="midi" accept=".mid,.midi">
+          <p>Choose voice:</p>
+          <select id="voice">
+            <option value="quake">Quake Chesnokov (bass)</option>
+            <option value="cicada">Cicada Lumen (baritone)</option>
+            <option value="air">Air Navier (alto)</option>
+          </select>
+          <div id="error"></div>
+          <button id="submit">Sing</button>
+          <audio id="audio" controls></audio>
+        </div>
+        <div id="loading-container">
+          <div id="loading-text">Loading...</div>
+          <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+        </div>
+      </div>
+    </div>
+    <article id="blurb">
+      <h2>About</h2>
+      <p>OddVoices is a project to create free and open source singing synthesizers for American English. This is a Web frontend for OddVoices, whose C++ source has been compiled to WebAssembly, so everything happens in your browser and nothing is sent to a server. Please note that this is experimental alpha software and has many bugs.</p>
+      <p>See <a href="https://gitlab.com/oddvoices/oddvoices">oddvoices/oddvoices</a> on GitLab for the core DSP code and command-line version of OddVoices, and <a href="https://gitlab.com/oddvoices/oddvoices-web">oddvoices/oddvoices-web</a> for the source code of this Web application.</p>
+      <p>To use the application, enter some English text into the box, upload a monophonic MIDI file, and select which voice you want to use. You may also leave the text blank, and the app will look for MIDI lyric events. Click "Sing," wait a few seconds, and play the audio file with the controls. To save as a WAV file, use the three dots to the right (Chrome) or right click and press Save Audio As... (Firefox).</p>
+      <p>There are no limits on the length of text or length of MIDI files, but you might stub your toe by running into browser memory limitations. If you encounter this, or need some form of batch processing, consider using the native command-line version.</p>
+
+      <h2>Phonetic entry</h2>
+      <p>OddVoices uses the <a href="http://www.speech.cs.cmu.edu/cgi-bin/cmudict">CMU Pronouncing Dictionary</a> to pronounce most words. OddVoices does not identify parts of speech, so heteronyms like "lead" and "read" are not handled intelligently. For OOV (out-of-vocabulary) words, OddVoices will guess the pronunciation by converting individual letters and pairs of letters to phonemes.</p>
+      <p>To supply custom pronunciations to override the defaults, <a href="https://en.wikipedia.org/wiki/X-SAMPA">X-SAMPA</a> notation is supported. Surround the X-SAMPA pronunciation with forward slashes (like this: /hEloU/ ) and make sure no additional punctuation immediately precedes or follows the slashes. The table of phonemes is:</p>
+
+      <table id="phoneme-guide">
+        <tr><th>X-SAMPA</th><th>IPA</th><th>Pronunciation</th></tr>
+      </table>
+
+      <p>There are some peculiarities worth noting here. First is the <a href="https://en.wikipedia.org/wiki/Cot%E2%80%93caught_merger">cot-caught merger</a> that equates /ɑ/ and /ɔ/ along with other low back vowels. This admittedly reflects a bias towards the American West Coast and towards a younger demographic of singers. The exception to this merger is that /ɔr/ (h<strong>or</strong>de) and /ɑr/ (h<strong>ar</strong>d) are distinct. If you enter /O/ or /A/ they will sound the same in OddVoices, but /Or/ and /Ar/ are different.</p>
+      <p>Second is the unification of /ə/ and /ʌ/. When sung, the English schwa is difficult to pin down and really represents a multitude of vowels. In varieties of North American English, /ə/ and /ʌ/ are closely linked and differ primarily by stress, so /ʌ/ is the best candidate for absorbing /ə/. Similarly, OddVoices doesn't distinguish /ɚ/ and /ɝ/. The CMU Pronouncing Dictionary unfortunately uses schwas a lot, so OddVoices enunciates a lot of words weirdly, like "im-uh-tate" for "imitate."</p>
+      <p>Finally, X-SAMPA's /&lbrace;/ causes bracket matching issues in some text editors, so /{}/ and /&amp;/ are provided as alternatives. The latter is borrowed from the so-called <a href="https://www.vulgarlang.com/ipa-x-sampa-cxs-converter/">Conlang X-SAMPA</a> or CXS.</p>
+
+      <h2>Copyrights</h2>
+
+      <p>OddVoices is copyright &copy; 2021-2022 <a href="https://nathan.ho.name/">Nathan Ho</a> and is available under the <a href="https://github.com/oddvoices/oddvoices/blob/develop/LICENSE">Apache License</a>. Its voice files are in the Public Domain.</p>
+
+      <p>Midifile is copyright &copy; 1999-2018 Craig Stuart Sapp and is available under the <a href="https://github.com/craigsapp/midifile">BSD 2-Clause License</a>.</p>
+
+      <p>The CMU Pronouncing Dictionary is copyright &copy; 1993-2015 Carnegie Mellon University and available under the <a href="http://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict/">BSD 2-Clause License</a>.</p>
+
+    </article>
+  </body>
+</html>
