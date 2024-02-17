@@ -13,5 +13,4 @@ WASM_SOURCES=oddvoices_wasm.cpp
 ALL_CPP_SOURCES=$(WASM_SOURCES) $(ODDVOICES_SOURCES) $(ODDVOICES_FRONTEND_SOURCES) $(MIDIFILE_SOURCES)
 
 all:
-	mkdir -p ../app/js/
-	emcc $(CFLAGS) --bind -o ../app/js/oddvoices_wasm.js $(ALL_CPP_INCLUDES) $(ALL_CPP_SOURCES) -s ASSERTIONS=1 -s ALLOW_MEMORY_GROWTH=1
+	emcc $(CFLAGS) --bind -o ../js/oddvoices_wasm.js $(ALL_CPP_INCLUDES) $(ALL_CPP_SOURCES) -s ASSERTIONS=1 -s ALLOW_MEMORY_GROWTH=1
