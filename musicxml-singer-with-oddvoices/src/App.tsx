@@ -19,6 +19,8 @@ import { parseXmlText } from "./musicXmlParsing/xmlHelpers";
 import { OddVoiceJSON } from "./oddVoiceJSON/oddVoiceHelpers";
 import { PhonemeGuide } from "./PhonemeGuide";
 import { OpenSheetMusicDisplay } from "./OpenSheetMusicDisplay";
+// @ts-ignore
+import createOddVoicesModule from "./oddvoices/js/oddvoices_wasm.mjs";
 
 import "./App.css";
 
@@ -34,6 +36,9 @@ const VisuallyHiddenInput = styled("input")({
     width: 1,
 });
 
+// https://stackoverflow.com/questions/60363032/proper-way-to-load-wasm-module-in-react-for-big-files-more-than-4kb
+// https://github.com/bobbiec/react-wasm-demo
+
 function App() {
     const [rawFile, setRawFile] = React.useState<string>("");
     const [oddVoiceOutputs, setOddVoiceOutputs] = React.useState<
@@ -45,6 +50,18 @@ function App() {
     if (oddVoiceOutputs.length > 0) {
         console.log({ oddVoiceOutputs });
     }
+
+    const [oddVoiceApp, setOddVoiceApp] = React.useState<any>(null);
+    React.useEffect(() => {
+        const initialize = async () => {
+            console.log({ createOddVoicesModule });
+            setOddVoiceApp(await createOddVoicesModule());
+        };
+        initialize();
+    }, []);
+
+    console.log({ oddVoiceApp, createOddVoicesModule });
+
     return (
         <Paper>
             <Grid item>

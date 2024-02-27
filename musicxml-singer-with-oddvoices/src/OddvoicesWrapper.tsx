@@ -121,5 +121,3 @@ class OddVoicesApp {
         (window as any).app = new OddVoicesApp();
     },
 };
-
-// makePhonemeGuide();
