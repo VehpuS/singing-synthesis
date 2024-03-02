@@ -35,9 +35,13 @@ jobs:
         with:
           node-version: 18
           cache: 'npm'
+      - name: Set up emscripten
+        run: sudo apt-get install emscripten
       - name: Install dependencies
+        working-directory: ./musicxml-singer-with-oddvoices
         run: npm install
       - name: Build
+        working-directory: ./musicxml-singer-with-oddvoices
         run: npm run build
       - name: Setup Pages
         uses: actions/configure-pages@v3
@@ -45,7 +49,7 @@ jobs:
         uses: actions/upload-pages-artifact@v2
         with:
           # Upload dist repository
-          path: './dist'
+          path: './musicxml-singer-with-oddvoices/dist'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2
