@@ -35,6 +35,7 @@ jobs:
         with:
           node-version: 18
           cache: 'npm'
+          cache-dependency-path: 'musicxml-singer-with-oddvoices/package-lock.json'
       - name: Set up emscripten
         run: sudo apt-get install emscripten
       - name: Install dependencies
