@@ -37,9 +37,6 @@ const VisuallyHiddenInput = styled("input")({
     width: 1,
 });
 
-// https://stackoverflow.com/questions/60363032/proper-way-to-load-wasm-module-in-react-for-big-files-more-than-4kb
-// https://github.com/bobbiec/react-wasm-demo
-
 function App() {
     const [rawFile, setRawFile] = React.useState<string>("");
     const [oddVoiceOutputs, setOddVoiceOutputs] = React.useState<
@@ -111,18 +108,6 @@ function App() {
                                 }}
                             />
                         </Button>
-                        {oddVoiceOutputs.length > 0 && (
-                            <Button
-                                onClick={() => {
-                                    const allAnchors = document.querySelectorAll("a.part-downloads");
-                                    allAnchors.forEach((anchor) => {
-                                        (anchor as HTMLAnchorElement).click();
-                                    });
-                                }}
-                            >
-                                Download All
-                            </Button>
-                        )}
                         {audioOutputs.length > 0 && (
                             <Button
                                 onClick={() => {
@@ -145,7 +130,7 @@ function App() {
                             <Accordion variant="outlined">
                                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                     <Typography variant="body1" textAlign="center" width="100%">
-                                        Preview
+                                        View MusicXML
                                     </Typography>
                                 </AccordionSummary>
                                 <AccordionDetails>
@@ -159,17 +144,26 @@ function App() {
                         <Grid container direction="column" gap={3} alignItems="center" paddingBlock={2}>
                             <Grid item container direction="column" gap={3} alignItems="center" alignSelf="center">
                                 {map(oddVoiceOutputs, (oddVoiceOutput, i) => {
-                                    const fileName = `${oddVoiceOutput.splitParams.partName}_(voice_${
+                                    const fileNamePrefix = `${oddVoiceOutput.splitParams.partName}_(voice_${
                                         oddVoiceOutput.splitParams.voice
                                     })${
                                         oddVoiceOutput.splitParams.largestChordLvl > 1
                                             ? `_chord-level_${oddVoiceOutput.splitParams.chordLvl}-${oddVoiceOutput.splitParams.largestChordLvl}`
                                             : ``
-                                    }.json`;
+                                    }`;
                                     return (
-                                        <Grid item container key={i}>
+                                        <Grid item container key={i} direction="column">
                                             <Grid item>
                                                 <Typography variant="h6">Part {i + 1}</Typography>
+                                            </Grid>
+                                            <Grid item>
+                                                <Typography variant="body1">
+                                                    {oddVoiceOutput.splitParams.partName} (voice{" "}
+                                                    {oddVoiceOutput.splitParams.voice})
+                                                    {oddVoiceOutput.splitParams.largestChordLvl > 1
+                                                        ? ` - chord level ${oddVoiceOutput.splitParams.chordLvl}/${oddVoiceOutput.splitParams.largestChordLvl}`
+                                                        : ``}
+                                                </Typography>
                                             </Grid>
                                             <Grid item>
                                                 <audio
@@ -183,17 +177,24 @@ function App() {
                                             </Grid>
                                             <Grid item>
                                                 <a
+                                                    className="audio-download"
+                                                    href={URL.createObjectURL(
+                                                        new Blob([audioOutputs[i]], { type: "audio/wav" })
+                                                    )}
+                                                    download={fileNamePrefix + ".wav"}
+                                                >
+                                                    Download Audio (wav)
+                                                </a>
+                                            </Grid>
+                                            <Grid item>
+                                                <a
                                                     className="part-downloads"
                                                     href={`data:text/json;charset=utf-8,${encodeURIComponent(
                                                         JSON.stringify(oddVoiceOutput.output, null, 2)
                                                     )}`}
-                                                    download={fileName}
+                                                    download={fileNamePrefix + ".json"}
                                                 >
-                                                    Download JSON - {oddVoiceOutput.splitParams.partName} (voice{" "}
-                                                    {oddVoiceOutput.splitParams.voice})
-                                                    {oddVoiceOutput.splitParams.largestChordLvl > 1
-                                                        ? ` - chord level ${oddVoiceOutput.splitParams.chordLvl}/${oddVoiceOutput.splitParams.largestChordLvl}`
-                                                        : ``}
+                                                    Download JSON
                                                 </a>
                                             </Grid>
                                         </Grid>
@@ -203,6 +204,20 @@ function App() {
                             </Grid>
                         </Grid>
                     )}
+                    <Grid item>
+                        {oddVoiceOutputs.length > 0 && (
+                            <Button
+                                onClick={() => {
+                                    const allAnchors = document.querySelectorAll("a.part-downloads");
+                                    allAnchors.forEach((anchor) => {
+                                        (anchor as HTMLAnchorElement).click();
+                                    });
+                                }}
+                            >
+                                Download All JSON Files
+                            </Button>
+                        )}
+                    </Grid>
                     <Grid container direction="column" gap={3} alignItems="center" paddingBlock={2}>
                         <PhonemeGuide />
                     </Grid>
