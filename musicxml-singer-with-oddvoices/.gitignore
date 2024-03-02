@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+
+# Build generated wasm files
+public/oddvoices_wasm.data
+public/oddvoices_wasm.wasm
+src/oddvoices/js/oddvoices_wasm.mjs
