@@ -31,7 +31,7 @@ Having successfully built a music XML parser in Python and finding the Oddvoices
 
 ## Unstructured notes for future features
 
-- (Web Audio DAW)[https://github.com/rserota/wad] - perhaps we can create a whole daw interface?
+- [Web Audio DAW](https://github.com/rserota/wad) - perhaps we can create a whole daw interface?
 
 - [opensheetmusicdisplay](https://github.com/opensheetmusicdisplay/opensheetmusicdisplay) (use musicxml to sync tracks, maybe as a player UI).
 
