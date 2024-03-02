@@ -4,7 +4,6 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "preinstall": "npm run build-oddvoices",
     "build-oddvoices": "git submodule update --init --recursive; cd ./src/oddvoices; make -C cpp; cd ../../",
     "dev": "npm run build-oddvoices; vite",
     "build": "tsc && npm run build-oddvoices && vite build",
