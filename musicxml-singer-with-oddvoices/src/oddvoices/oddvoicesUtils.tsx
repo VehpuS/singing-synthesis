@@ -34,7 +34,11 @@ export function base64EncArr(aBytes: Uint8Array) {
             nUint24 = 0;
         }
     }
-    return sB64Enc.substr(0, sB64Enc.length - 2 + nMod3) + (nMod3 === 2 ? "" : nMod3 === 1 ? "=" : "==");
+    return sB64Enc.substring(0, sB64Enc.length - 2 + nMod3) + (nMod3 === 2 ? "" : nMod3 === 1 ? "=" : "==");
 }
 
-export const ALL_VOICES = ["air", "cicada", "quake"];
+export enum Voice {
+    air=0,
+    cicada=1, 
+    quake=2,
+}

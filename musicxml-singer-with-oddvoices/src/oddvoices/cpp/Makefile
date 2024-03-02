@@ -13,8 +13,25 @@ WASM_SOURCES=oddvoices_wasm.cpp
 ALL_CPP_SOURCES=$(WASM_SOURCES) $(ODDVOICES_SOURCES) $(ODDVOICES_FRONTEND_SOURCES) $(MIDIFILE_SOURCES)
 PRELOAD_FILES=--preload-file oddvoices/cmudict-0.7b --preload-file voices/air.voice --preload-file voices/cicada.voice --preload-file voices/quake.voice
 
+# Determine the operating system
+UNAME_S := $(shell uname -s)
+
+# Set sed flags based on the operating system
+ifeq ($(UNAME_S),Darwin)  # macOS
+	SED_FLAGS := -i ''
+else ifeq ($(UNAME_S),Linux)  # Linux
+	SED_FLAGS := -i
+else
+	$(error Unsupported operating system: $(UNAME_S))
+endif
+
+# Define the sed command
+SED := sed $(SED_FLAGS)
+
 all:
 	emcc $(CFLAGS) --bind -o ../../../public/oddvoices_wasm.mjs $(ALL_CPP_INCLUDES) $(ALL_CPP_SOURCES) -s ASSERTIONS=1 -s ALLOW_MEMORY_GROWTH=1 -s ENVIRONMENT='web' -s USE_ES6_IMPORT_META=0 $(PRELOAD_FILES) -s EXPORTED_RUNTIME_METHODS='["ccall", "cwrap", "FS"]'
 	mkdir -p ../js  # Create the directory if it doesn't exist
+	# Add the vite.config.ts 'base' property to the generated oddvoices_wasm.mjs file as a prefix
+	$(SED) 's/"oddvoices_wasm/"singing-synthesis\/oddvoices_wasm/g' ../../../public/oddvoices_wasm.mjs
 	mv ../../../public/oddvoices_wasm.mjs ../js/oddvoices_wasm.mjs
 
