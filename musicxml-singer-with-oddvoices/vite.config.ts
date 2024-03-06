@@ -9,6 +9,10 @@ export default defineConfig({
     noDiscovery: true,
   },
   build: {
+    sourcemap: false,
+    rollupOptions: {
+      treeshake: false,
+    },
     minify: false,
     terserOptions: {
       keep_classnames: true,
