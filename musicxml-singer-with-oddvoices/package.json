@@ -7,6 +7,7 @@
     "build-oddvoices": "git submodule update --init --recursive; cd ./src/oddvoices; make -C cpp; cd ../../",
     "dev": "npm run build-oddvoices; vite",
     "build": "tsc && npm run build-oddvoices && vite build && mkdir -p ./dist/singing-synthesis && mv ./dist/oddvoices_wasm* ./dist/singing-synthesis/",
+    "build-dev": "tsc && npm run build-oddvoices && vite build --mode development && mkdir -p ./dist/singing-synthesis && mv ./dist/oddvoices_wasm* ./dist/singing-synthesis/",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
