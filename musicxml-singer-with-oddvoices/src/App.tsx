@@ -1,5 +1,5 @@
 import React from "react";
-import { forEach, map } from "lodash";
+import { map } from "lodash";
 import {
     Accordion,
     AccordionDetails,
@@ -10,32 +10,19 @@ import {
     Grid,
     Paper,
     Typography,
-    styled,
 } from "@mui/material";
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
-import { SplitParams, createSplitOddVoiceJsonInputsFromMusicXml } from "./oddVoiceJSON";
-import { parseXmlText } from "./musicXmlParsing/xmlHelpers";
+import { SplitParams } from "./oddVoiceJSON";
 import { OddVoiceJSON } from "./oddVoiceJSON/oddVoiceHelpers";
 import { PhonemeGuide } from "./PhonemeGuide";
 import { OpenSheetMusicDisplay } from "./OpenSheetMusicDisplay";
 import { base64EncArr } from "./oddvoices/oddvoicesUtils";
 import { useOddVoicesApp } from "./oddvoices";
+import { MediaControls } from "./MediaControls";
 
 import "./App.css";
-
-const VisuallyHiddenInput = styled("input")({
-    clip: "rect(0 0 0 0)",
-    clipPath: "inset(50%)",
-    height: 1,
-    overflow: "hidden",
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    whiteSpace: "nowrap",
-    width: 1,
-});
+import { UploadButton } from "./UploadButton";
 
 function App() {
     const [rawFile, setRawFile] = React.useState<string>("");
@@ -47,98 +34,74 @@ function App() {
         console.log({ oddVoiceOutputs });
     }
 
-    const { oddVoiceApp, generateVoiceFromOddVoiceJson } = useOddVoicesApp();
+    const { isLoadingApp, isLoadingVoice, generateVoiceFromOddVoiceJson } = useOddVoicesApp();
 
     const [isGeneratingAudio, setIsGeneratingAudio] = React.useState(false);
 
-    const [, startTransition] = React.useTransition();
-
     return (
         <Paper>
-            {!oddVoiceApp ? (
+            <Accordion
+                variant="outlined"
+                sx={{
+                    top: 0,
+                    position: "sticky",
+                    zIndex: 1,
+                    backgroundColor: (theme) => theme.palette.background.paper,
+                }}
+            >
+                <AccordionSummary disabled={!rawFile} expandIcon={rawFile ? <ExpandMoreIcon /> : null}>
+                    <Typography variant="body1" textAlign="center" width="100%">
+                        {isGeneratingAudio ? (
+                            <>
+                                <CircularProgress size={16} /> Generating audio...
+                            </>
+                        ) : isLoadingVoice ? (
+                            <>
+                                <CircularProgress size={16} /> Loading voice...
+                            </>
+                        ) : rawFile ? (
+                            "View MusicXML"
+                        ) : (
+                            "Upload a MusicXML file to view it here."
+                        )}
+                    </Typography>
+                </AccordionSummary>
+                <AccordionDetails sx={{ overflow: "auto", height: 300 }}>
+                    <OpenSheetMusicDisplay autoResize file={rawFile} />
+                </AccordionDetails>
+            </Accordion>
+
+            {isLoadingApp ? (
                 <CircularProgress />
             ) : (
                 <>
-                    <Grid item>
-                        <Button
-                            component="label"
-                            role={undefined}
-                            variant="contained"
-                            tabIndex={-1}
-                            startIcon={<CloudUploadIcon />}
+                    <Grid
+                        item
+                        sx={{
+                            top: 50,
+                            position: "sticky",
+                            zIndex: 1,
+                        }}
+                    >
+                        <Paper
+                            elevation={0}
+                            sx={{
+                                display: "flex",
+                                border: (theme) => `1px solid ${theme.palette.divider}`,
+                                flexWrap: "wrap",
+                            }}
                         >
-                            Upload file
-                            <VisuallyHiddenInput
-                                type="file"
-                                onChange={(e) => {
-                                    const file = e?.target?.files?.[0];
-                                    if (!file) {
-                                        return;
-                                    }
-                                    const reader = new FileReader();
-                                    reader.onload = (e) => {
-                                        if (e?.target?.result) {
-                                            setIsGeneratingAudio(true);
-                                            const result = e.target.result as string;
-                                            startTransition(() => {
-                                                const newOddVoiceOutputs = createSplitOddVoiceJsonInputsFromMusicXml(
-                                                    parseXmlText(result)
-                                                );
-                                                setOddVoiceOutputs(newOddVoiceOutputs);
-                                                setRawFile(result);
-                                                forEach(newOddVoiceOutputs, (oddVoiceOutput, i) => {
-                                                    const outputAudio = generateVoiceFromOddVoiceJson(
-                                                        oddVoiceOutput.output
-                                                    );
-                                                    if (!outputAudio || outputAudio.length === 0) {
-                                                        console.error("Failed to generate audio output.");
-                                                        return;
-                                                    }
-                                                    setAudioOutputs((prev) => {
-                                                        const newOutputs = [...prev];
-                                                        newOutputs[i] = outputAudio;
-                                                        return newOutputs;
-                                                    });
-                                                });
-                                                setIsGeneratingAudio(false);
-                                            });
-                                        }
-                                    };
-                                    reader.readAsText(file);
-                                }}
+                            <UploadButton
+                                isLoadingVoice={isLoadingVoice}
+                                setIsGeneratingAudio={setIsGeneratingAudio}
+                                setOddVoiceOutputs={setOddVoiceOutputs}
+                                setAudioOutputs={setAudioOutputs}
+                                setRawFile={setRawFile}
+                                generateVoiceFromOddVoiceJson={generateVoiceFromOddVoiceJson}
                             />
-                        </Button>
-                        {audioOutputs.length > 0 && (
-                            <Button
-                                onClick={() => {
-                                    const allAudios = document.querySelectorAll("audio");
-                                    forEach(allAudios, (audio) => {
-                                        audio.currentTime = 0;
-                                        audio.play();
-                                    });
-                                }}
-                            >
-                                Play All
-                            </Button>
-                        )}
+                            {audioOutputs.length > 0 && <MediaControls />}
+                        </Paper>
                     </Grid>
-                    <Divider />
-                    {isGeneratingAudio ? (
-                        <CircularProgress />
-                    ) : (
-                        Boolean(rawFile) && (
-                            <Accordion variant="outlined">
-                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                    <Typography variant="body1" textAlign="center" width="100%">
-                                        View MusicXML
-                                    </Typography>
-                                </AccordionSummary>
-                                <AccordionDetails>
-                                    <OpenSheetMusicDisplay autoResize file={rawFile} />
-                                </AccordionDetails>
-                            </Accordion>
-                        )
-                    )}
                     <Divider />
                     {!isGeneratingAudio && (
                         <Grid container direction="column" gap={3} alignItems="center" paddingBlock={2}>

@@ -10,16 +10,10 @@ enum Voice
     QUAKE = 2
 };
 
-std::string sing(int voiceIndex, std::string json, std::string outWAVFile, std::string lyrics)
+std::string sing(oddvoices::Voice &voice, std::string json, std::string outWAVFile, std::string lyrics)
 {
-
     // Setup the G2P Class
     oddvoices::g2p::G2P g2p("oddvoices/cmudict-0.7b");
-
-    // Setup the Voice Class
-    std::string voicePath = voiceIndex == AIR ? "voices/air.voice" : voiceIndex == CICADA ? "voices/cicada.voice" : "voices/quake.voice";
-    oddvoices::Voice voice;
-    voice.initFromFile(voicePath);
 
     // Sing the JSON
     auto [ok, error] = oddvoices::frontend::singJSON(
@@ -34,4 +28,7 @@ std::string sing(int voiceIndex, std::string json, std::string outWAVFile, std::
 EMSCRIPTEN_BINDINGS(oddvoices_wasm)
 {
     emscripten::function("sing", &sing);
+    emscripten::class_<oddvoices::Voice>("Voice")
+        .constructor<>()
+        .function("initFromFile", &oddvoices::Voice::initFromFile);
 }

@@ -37,8 +37,10 @@ export function base64EncArr(aBytes: Uint8Array) {
     return sB64Enc.substring(0, sB64Enc.length - 2 + nMod3) + (nMod3 === 2 ? "" : nMod3 === 1 ? "=" : "==");
 }
 
+export const voiceUrlPrefix = "singing-synthesis/voices/";
+
 export enum Voice {
-    air=0,
-    cicada=1, 
-    quake=2,
+    air = "air",
+    cicada = "cicada",
+    quake = "quake",
 }

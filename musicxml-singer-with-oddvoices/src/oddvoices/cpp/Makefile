@@ -11,7 +11,7 @@ ODDVOICES_FRONTEND_SOURCES=oddvoices/cpp/frontend/sing.cpp oddvoices/cpp/fronten
 MIDIFILE_SOURCES=$(wildcard oddvoices/cpp/external_libraries/midifile/src/*.cpp)
 WASM_SOURCES=oddvoices_wasm.cpp
 ALL_CPP_SOURCES=$(WASM_SOURCES) $(ODDVOICES_SOURCES) $(ODDVOICES_FRONTEND_SOURCES) $(MIDIFILE_SOURCES)
-PRELOAD_FILES=--preload-file oddvoices/cmudict-0.7b --preload-file voices/air.voice --preload-file voices/cicada.voice --preload-file voices/quake.voice
+PRELOAD_FILES=--preload-file oddvoices/cmudict-0.7b
 
 # Determine the operating system
 UNAME_S := $(shell uname -s)
