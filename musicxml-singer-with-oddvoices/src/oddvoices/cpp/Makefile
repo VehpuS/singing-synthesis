@@ -31,7 +31,9 @@ SED := sed $(SED_FLAGS)
 all:
 	emcc $(CFLAGS) --bind -o ../../../public/oddvoices_wasm.mjs $(ALL_CPP_INCLUDES) $(ALL_CPP_SOURCES) -s ASSERTIONS=1 -s ALLOW_MEMORY_GROWTH=1 -s ENVIRONMENT='web' -s USE_ES6_IMPORT_META=0 $(PRELOAD_FILES) -s EXPORTED_RUNTIME_METHODS='["ccall", "cwrap", "FS"]'
 	mkdir -p ../js  # Create the directory if it doesn't exist
-	# Add the vite.config.ts 'base' property to the generated oddvoices_wasm.mjs file as a prefix
-	$(SED) 's/"oddvoices_wasm/"singing-synthesis\/oddvoices_wasm/g' ../../../public/oddvoices_wasm.mjs
+	# If used, add the vite.config.ts 'base' property to the generated oddvoices_wasm.mjs file as a prefix
+	@if [ $(VITE_BASE) ]; then\
+        $(SED) 's/"oddvoices_wasm/"$(VITE_BASE)\/oddvoices_wasm/g' ../../../public/oddvoices_wasm.mjs;\
+    fi
 	mv ../../../public/oddvoices_wasm.mjs ../js/oddvoices_wasm.mjs
 

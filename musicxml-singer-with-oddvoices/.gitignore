@@ -8,11 +8,6 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist/oddvoices*
-dist/voices/*
-dist/singing-synthesis/assets
-dist/singing-synthesis/index.html
-dist/singing-synthesis/vite.svg
 dist-ssr
 *.local
 
