@@ -6,6 +6,6 @@ export default defineConfig({
   plugins: [react()],
   base: "/singing-synthesis",
   optimizeDeps: {
-    exclude: ["@rollup/browser"],
+    exclude: ["@rollup/browser", "./src/oddvoices/js/oddvoices_wasm.mjs"],
   },
 });
