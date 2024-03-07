@@ -5,7 +5,15 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "musicxml-singer-with-oddvoices/**"
+      - "musicxml-singer-with-oddvoices/src/**"
+      - "musicxml-singer-with-oddvoices/package.json"
+      - "musicxml-singer-with-oddvoices/package-lock.json"
+      - "musicxml-singer-with-oddvoices/public"
+      - "musicxml-singer-with-oddvoices/voices"
+      - "musicxml-singer-with-oddvoices/.env.production"
+      - "musicxml-singer-with-oddvoices/tsconfig.json"
+      - "musicxml-singer-with-oddvoices/tsconfig.node.json"
+      - "musicxml-singer-with-oddvoices/vite.config.js"
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
