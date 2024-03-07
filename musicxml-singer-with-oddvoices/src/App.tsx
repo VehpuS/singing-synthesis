@@ -12,6 +12,7 @@ import {
     Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ErrorIcon from "@mui/icons-material/Error";
 
 import { SplitParams } from "./oddVoiceJSON";
 import { OddVoiceJSON } from "./oddVoiceJSON/oddVoiceHelpers";
@@ -34,7 +35,7 @@ function App() {
         console.log({ oddVoiceOutputs });
     }
 
-    const { isLoadingApp, isLoadingVoice, generateVoiceFromOddVoiceJson } = useOddVoicesApp();
+    const { isLoadingApp, isLoadingVoice, voiceLoadingFailed, generateVoiceFromOddVoiceJson } = useOddVoicesApp();
 
     const [isGeneratingAudio, setIsGeneratingAudio] = React.useState(false);
 
@@ -51,7 +52,12 @@ function App() {
             >
                 <AccordionSummary disabled={!rawFile} expandIcon={rawFile ? <ExpandMoreIcon /> : null}>
                     <Typography variant="body1" textAlign="center" width="100%">
-                        {isGeneratingAudio ? (
+                        {voiceLoadingFailed ? (
+                            <>
+                                <ErrorIcon />
+                                Error loading voice!
+                            </>
+                        ) : isGeneratingAudio ? (
                             <>
                                 <CircularProgress size={16} /> Generating audio...
                             </>

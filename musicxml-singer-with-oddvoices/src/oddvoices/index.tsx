@@ -44,6 +44,7 @@ export const useOddVoicesApp = () => {
     const {
         data: voiceData,
         isLoading: isLoadingVoice,
+        error: voiceError,
     } = useQuery({
         queryKey: ["oddVoices", activeVoice],
         queryFn: async () => {
@@ -52,7 +53,7 @@ export const useOddVoicesApp = () => {
             }
             const response = await fetch(`${voiceUrlPrefix}${activeVoice}.voice`);
             const buffer = await response.arrayBuffer();
-            
+
             const fileName = `/voices/${activeVoice}.voice`;
             oddVoiceApp.FS.writeFile(fileName, new Uint8Array(buffer));
 
@@ -88,11 +89,16 @@ export const useOddVoicesApp = () => {
         return buffer;
     };
 
+    if (voiceError) {
+        console.error(voiceError);
+    }
+
     return {
         isLoadingApp: !oddVoiceApp,
         isLoadingVoice,
         generateVoiceFromOddVoiceJson,
         activeVoice,
         setActiveVoice,
+        voiceLoadingFailed: !isLoadingVoice && !voiceData,
     };
 };
