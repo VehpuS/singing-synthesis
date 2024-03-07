@@ -27,14 +27,6 @@ export class OpenSheetMusicDisplay extends Component<OpenSheetMusicDisplayProps>
         }
     }
 
-    resize() {
-        this.forceUpdate();
-    }
-
-    componentWillUnmount() {
-        window.removeEventListener("resize", this.resize);
-    }
-
     componentDidUpdate(prevProps: OpenSheetMusicDisplayProps) {
         if (this.props.drawTitle !== prevProps.drawTitle) {
             this.initOsmd();
@@ -62,7 +54,6 @@ export class OpenSheetMusicDisplay extends Component<OpenSheetMusicDisplayProps>
         if (this.props.file) {
             this.osmd?.load(this.props.file).then(() => this.osmd?.render());
         }
-        window.addEventListener("resize", this.resize);
     }
 
     render() {
