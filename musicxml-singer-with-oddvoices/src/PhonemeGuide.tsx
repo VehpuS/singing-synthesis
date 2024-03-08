@@ -61,27 +61,15 @@ export const PhonemeGuide: React.FC = () => {
             <Grid item container gap={3}>
                 <Typography textAlign="start" variant="body1">
                     OddVoices is a project to create free and open source singing synthesizers for American English.
-                    This is a Web frontend for OddVoices, whose C++ source has been compiled to WebAssembly, so
-                    everything happens in your browser and nothing is sent to a server. Please note that this is
-                    experimental alpha software and has many bugs.
+                    This app contains a WebAssembly version of OddVoices, so everything happens in your browser and
+                    nothing is sent to a server.
+                    Please note that this is experimental alpha software and has many bugs.
                 </Typography>
                 <Typography textAlign="start" variant="body1">
                     See <a href="https://gitlab.com/oddvoices/oddvoices">oddvoices/oddvoices</a> on GitLab for the core
                     DSP code and command-line version of OddVoices, and{" "}
                     <a href="https://gitlab.com/oddvoices/oddvoices-web">oddvoices/oddvoices-web</a> for the source code
-                    of this Web application.
-                </Typography>
-                <Typography textAlign="start" variant="body1">
-                    To use the application, enter some English text into the box, upload a monophonic MIDI file, and
-                    select which voice you want to use. You may also leave the text blank, and the app will look for
-                    MIDI lyric events. Click "Sing," wait a few seconds, and play the audio file with the controls. To
-                    save as a WAV file, use the three dots to the right (Chrome) or right click and press Save Audio
-                    As... (Firefox).
-                </Typography>
-                <Typography textAlign="start" variant="body1">
-                    There are no limits on the length of text or length of MIDI files, but you might stub your toe by
-                    running into browser memory limitations. If you encounter this, or need some form of batch
-                    processing, consider using the native command-line version.
+                    of it's Web application version for MIDI + lyrics input.
                 </Typography>
             </Grid>
 
