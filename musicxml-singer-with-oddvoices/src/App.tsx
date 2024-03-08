@@ -52,7 +52,12 @@ function App() {
             >
                 <AccordionSummary disabled={!rawFile} expandIcon={rawFile ? <ExpandMoreIcon /> : null}>
                     <Typography variant="body1" textAlign="center" width="100%">
-                        {voiceLoadingFailed ? (
+                        {isLoadingApp ? (
+                            <>
+                                <CircularProgress />
+                                Loading app...
+                            </>
+                        ) : voiceLoadingFailed ? (
                             <>
                                 <ErrorIcon />
                                 Error loading voice!
