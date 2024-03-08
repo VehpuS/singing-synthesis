@@ -3,7 +3,7 @@ import { forEach } from "lodash";
 import { Button, styled } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 
-import { SplitParams, createSplitOddVoiceJsonInputsFromMusicXml } from "./oddVoiceJSON";
+import { createSplitOddVoiceJsonInputsFromMusicXml } from "./oddVoiceJSON";
 import { parseXmlText } from "./musicXmlParsing/xmlHelpers";
 import { OddVoiceJSON } from "./oddVoiceJSON/oddVoiceHelpers";
 
@@ -21,7 +21,9 @@ const VisuallyHiddenInput = styled("input")({
 
 export const UploadButton: React.FC<{
     isLoadingVoice: boolean;
-    setOddVoiceOutputs: React.Dispatch<React.SetStateAction<Array<{ output: OddVoiceJSON; splitParams: SplitParams }>>>;
+    setOddVoiceOutputs: React.Dispatch<
+        React.SetStateAction<ReturnType<typeof createSplitOddVoiceJsonInputsFromMusicXml>>
+    >;
     setAudioOutputs: React.Dispatch<React.SetStateAction<Uint8Array[]>>;
     setRawFile: React.Dispatch<React.SetStateAction<string>>;
     setIsGeneratingAudio: React.Dispatch<React.SetStateAction<boolean>>;
@@ -55,30 +57,30 @@ export const UploadButton: React.FC<{
                     }
                     const reader = new FileReader();
                     reader.onload = (e) => {
-                        if (e?.target?.result) {
-                            setIsGeneratingAudio(true);
-                            const result = e.target.result as string;
-                            startTransition(() => {
-                                const newOddVoiceOutputs = createSplitOddVoiceJsonInputsFromMusicXml(
-                                    parseXmlText(result)
-                                );
-                                setOddVoiceOutputs(newOddVoiceOutputs);
-                                setRawFile(result);
-                                forEach(newOddVoiceOutputs, (oddVoiceOutput, i) => {
-                                    const outputAudio = generateVoiceFromOddVoiceJson(oddVoiceOutput.output);
-                                    if (!outputAudio || outputAudio.length === 0) {
-                                        console.error("Failed to generate audio output.");
-                                        return;
-                                    }
-                                    setAudioOutputs((prev) => {
-                                        const newOutputs = [...prev];
-                                        newOutputs[i] = outputAudio;
-                                        return newOutputs;
-                                    });
-                                });
-                                setIsGeneratingAudio(false);
-                            });
+                        if (!e?.target?.result) {
+                            return;
                         }
+                        setIsGeneratingAudio(true);
+                        setOddVoiceOutputs([]);
+                        setAudioOutputs([]);
+                        setRawFile("");
+                        const rawText = e.target.result as string;
+                        startTransition(() => {
+                            const newOddVoiceOutputs = createSplitOddVoiceJsonInputsFromMusicXml(parseXmlText(rawText));
+                            setOddVoiceOutputs(newOddVoiceOutputs);
+                            setRawFile(rawText);
+                            const newAudioOutputs: Uint8Array[] = new Array(newOddVoiceOutputs.length);
+                            forEach(newOddVoiceOutputs, (oddVoiceOutput, i) => {
+                                const outputAudio = generateVoiceFromOddVoiceJson(oddVoiceOutput.output);
+                                if (!outputAudio || outputAudio.length === 0) {
+                                    console.error("Failed to generate audio output.");
+                                    return;
+                                }
+                                newAudioOutputs[i] = outputAudio;
+                            });
+                            setAudioOutputs(newAudioOutputs);
+                            setIsGeneratingAudio(false);
+                        });
                     };
                     reader.readAsText(file);
                 }}

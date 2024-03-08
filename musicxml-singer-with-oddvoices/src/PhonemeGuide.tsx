@@ -4,7 +4,6 @@ import {
     Accordion,
     AccordionDetails,
     AccordionSummary,
-    Divider,
     Grid,
     Table,
     TableBody,
@@ -59,9 +58,6 @@ const XSAMPA_TO_IPA_AND_GUIDE = {
 export const PhonemeGuide: React.FC = () => {
     return (
         <Grid item container direction="column" mt={2} gap={3} width="80%" alignItems="flex-start">
-            <Grid item>
-                <Typography variant="h2">About</Typography>
-            </Grid>
             <Grid item container gap={3}>
                 <Typography textAlign="start" variant="body1">
                     OddVoices is a project to create free and open source singing synthesizers for American English.
@@ -90,7 +86,7 @@ export const PhonemeGuide: React.FC = () => {
             </Grid>
 
             <Grid item>
-                <Typography variant="h2">Phonetic entry</Typography>
+                <Typography variant="h6">Phonetic entry</Typography>
             </Grid>
             <Grid item container gap={3}>
                 <Typography textAlign="start" variant="body1">
@@ -110,7 +106,7 @@ export const PhonemeGuide: React.FC = () => {
             <Grid item width="100%">
                 <Accordion>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                        <Typography variant="h3">Phoneme Guide</Typography>
+                        <Typography variant="subtitle1">Phoneme Guide</Typography>
                     </AccordionSummary>
                     <AccordionDetails>
                         <Table
@@ -184,37 +180,6 @@ export const PhonemeGuide: React.FC = () => {
                     Finally, X-SAMPA's /&lbrace;/ causes bracket matching issues in some text editors, so /{}/ and
                     /&amp;/ are provided as alternatives. The latter is borrowed from the so-called{" "}
                     <a href="https://www.vulgarlang.com/ipa-x-sampa-cxs-converter/">Conlang X-SAMPA</a> or CXS.
-                </Typography>
-            </Grid>
-
-            <Divider />
-
-            <Grid item>
-                <Typography variant="h2">Copyrights</Typography>
-            </Grid>
-
-            <Grid item container gap={3}>
-                <Typography textAlign="start" variant="body1">
-                    The source code for this project is released under the{" "}
-                    <a href="https://github.com/VehpuS/singing-synthesis/blob/main/LICENSE">GNU GPL v3.0</a> license.
-                </Typography>
-
-                <Typography textAlign="start" variant="body1">
-                    OddVoices is copyright &copy; 2021-2022 <a href="https://nathan.ho.name/">Nathan Ho</a> and is
-                    available under the{" "}
-                    <a href="https://github.com/oddvoices/oddvoices/blob/develop/LICENSE">Apache License</a>. Its voice
-                    files are in the Public Domain.
-                </Typography>
-
-                <Typography textAlign="start" variant="body1">
-                    Midifile is copyright &copy; 1999-2018 Craig Stuart Sapp and is available under the{" "}
-                    <a href="https://github.com/craigsapp/midifile">BSD 2-Clause License</a>.
-                </Typography>
-
-                <Typography textAlign="start" variant="body1">
-                    The CMU Pronouncing Dictionary is copyright &copy; 1993-2015 Carnegie Mellon University and
-                    available under the{" "}
-                    <a href="http://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict/">BSD 2-Clause License</a>.
                 </Typography>
             </Grid>
         </Grid>

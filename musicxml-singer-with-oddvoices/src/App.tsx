@@ -4,7 +4,6 @@ import {
     Accordion,
     AccordionDetails,
     AccordionSummary,
-    Button,
     CircularProgress,
     Divider,
     Grid,
@@ -14,21 +13,21 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ErrorIcon from "@mui/icons-material/Error";
 
-import { SplitParams } from "./oddVoiceJSON";
-import { OddVoiceJSON } from "./oddVoiceJSON/oddVoiceHelpers";
 import { PhonemeGuide } from "./PhonemeGuide";
 import { OpenSheetMusicDisplay } from "./OpenSheetMusicDisplay";
-import { base64EncArr } from "./oddvoices/oddvoicesUtils";
 import { useOddVoicesApp } from "./oddvoices";
 import { MediaControls } from "./MediaControls";
+import { UploadButton } from "./UploadButton";
+import { LicenseFooter } from "./LicenseFooter";
+import { VoicePart } from "./VoicePart";
+import { createSplitOddVoiceJsonInputsFromMusicXml } from "./oddVoiceJSON";
 
 import "./App.css";
-import { UploadButton } from "./UploadButton";
 
 function App() {
     const [rawFile, setRawFile] = React.useState<string>("");
     const [oddVoiceOutputs, setOddVoiceOutputs] = React.useState<
-        Array<{ output: OddVoiceJSON; splitParams: SplitParams }>
+        ReturnType<typeof createSplitOddVoiceJsonInputsFromMusicXml>
     >([]);
     const [audioOutputs, setAudioOutputs] = React.useState<Uint8Array[]>([]);
     if (oddVoiceOutputs.length > 0) {
@@ -40,7 +39,7 @@ function App() {
     const [isGeneratingAudio, setIsGeneratingAudio] = React.useState(false);
 
     return (
-        <Paper>
+        <Paper elevation={1} sx={{ maxWidth: 800, paddingInline: 3, marginInline: 1 }}>
             <Accordion
                 variant="outlined"
                 sx={{
@@ -82,9 +81,7 @@ function App() {
                 </AccordionDetails>
             </Accordion>
 
-            {isLoadingApp ? (
-                <CircularProgress />
-            ) : (
+            {!isLoadingApp && (
                 <>
                     <Grid
                         item
@@ -114,89 +111,36 @@ function App() {
                         </Paper>
                     </Grid>
                     <Divider />
-                    {!isGeneratingAudio && (
-                        <Grid container direction="column" gap={3} alignItems="center" paddingBlock={2}>
-                            <Grid item container direction="column" gap={3} alignItems="center" alignSelf="center">
-                                {map(oddVoiceOutputs, (oddVoiceOutput, i) => {
-                                    const fileNamePrefix = `${oddVoiceOutput.splitParams.partName}_(voice_${
-                                        oddVoiceOutput.splitParams.voice
-                                    })${
-                                        oddVoiceOutput.splitParams.largestChordLvl > 1
-                                            ? `_chord-level_${oddVoiceOutput.splitParams.chordLvl}-${oddVoiceOutput.splitParams.largestChordLvl}`
-                                            : ``
-                                    }`;
-                                    return (
-                                        <Grid item container key={i} direction="column">
-                                            <Grid item>
-                                                <Typography variant="h6">Part {i + 1}</Typography>
-                                            </Grid>
-                                            <Grid item>
-                                                <Typography variant="body1">
-                                                    {oddVoiceOutput.splitParams.partName} (voice{" "}
-                                                    {oddVoiceOutput.splitParams.voice})
-                                                    {oddVoiceOutput.splitParams.largestChordLvl > 1
-                                                        ? ` - chord level ${oddVoiceOutput.splitParams.chordLvl}/${oddVoiceOutput.splitParams.largestChordLvl}`
-                                                        : ``}
-                                                </Typography>
-                                            </Grid>
-                                            <Grid item>
-                                                <audio
-                                                    controls
-                                                    src={
-                                                        audioOutputs[i]
-                                                            ? "data:audio/wav;base64," + base64EncArr(audioOutputs[i])
-                                                            : undefined
-                                                    }
-                                                />
-                                            </Grid>
-                                            <Grid item>
-                                                <a
-                                                    className="audio-download"
-                                                    href={URL.createObjectURL(
-                                                        new Blob([audioOutputs[i]], { type: "audio/wav" })
-                                                    )}
-                                                    download={fileNamePrefix + ".wav"}
-                                                >
-                                                    Download Audio (wav)
-                                                </a>
-                                            </Grid>
-                                            <Grid item>
-                                                <a
-                                                    className="part-downloads"
-                                                    href={`data:text/json;charset=utf-8,${encodeURIComponent(
-                                                        JSON.stringify(oddVoiceOutput.output, null, 2)
-                                                    )}`}
-                                                    download={fileNamePrefix + ".json"}
-                                                >
-                                                    Download JSON
-                                                </a>
-                                            </Grid>
-                                        </Grid>
-                                    );
-                                })}
-                                <Divider />
-                            </Grid>
-                        </Grid>
-                    )}
-                    <Grid item>
-                        {oddVoiceOutputs.length > 0 && (
-                            <Button
-                                onClick={() => {
-                                    const allAnchors = document.querySelectorAll("a.part-downloads");
-                                    allAnchors.forEach((anchor) => {
-                                        (anchor as HTMLAnchorElement).click();
-                                    });
-                                }}
-                            >
-                                Download All JSON Files
-                            </Button>
-                        )}
-                    </Grid>
                     <Grid container direction="column" gap={3} alignItems="center" paddingBlock={2}>
-                        <PhonemeGuide />
+                        <Grid item container direction="column" gap={3} alignItems="center" alignSelf="center">
+                            {map(oddVoiceOutputs, (oddVoiceOutput, i) => (
+                                <VoicePart
+                                    key={i}
+                                    partIndex={i}
+                                    output={oddVoiceOutput.output}
+                                    splitParams={oddVoiceOutput.splitParams}
+                                    debugInfo={oddVoiceOutput.unparsedPartEvents}
+                                    audioOutput={audioOutputs[i]}
+                                />
+                            ))}
+                            <Divider />
+                        </Grid>
                     </Grid>
                 </>
             )}
+
+            <Grid container direction="column" gap={3} alignItems="center" paddingBlock={2}>
+                <Accordion>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Typography variant="h6">About Oddvoices</Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                        <PhonemeGuide />
+                    </AccordionDetails>
+                </Accordion>
+            </Grid>
+            <Divider />
+            <LicenseFooter />
         </Paper>
     );
 }

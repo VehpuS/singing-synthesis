@@ -59,6 +59,7 @@ export interface SplitParams {
     voice: number | string;
     chordLvl: number;
     largestChordLvl: number;
+    numVoices: number;
 }
 
 const parseTempoChangesFromMeasureChild = ({
@@ -587,7 +588,15 @@ export const generateOddVoiceJsonForSplit = ({
 
 export const createSplitOddVoiceJsonInputsFromMusicXml = (
     parsedMusicXml: MusicXmlJson
-): Array<{ output: OddVoiceJSON; splitParams: SplitParams }> => {
+): Array<{
+    output: OddVoiceJSON;
+    splitParams: SplitParams;
+    unparsedPartEvents: {
+        lyricsEvents: MusicXmlLyricsEvent[];
+        tempoEvents: MusicXmlTempoEvent[];
+        noteEvents: MusicXmlNoteEvent[];
+    };
+}> => {
     const scorePartwise = parsedMusicXml[1];
     const partsDetails = parseVocalPartsFromRoot(scorePartwise);
 
@@ -599,14 +608,31 @@ export const createSplitOddVoiceJsonInputsFromMusicXml = (
                 voice,
                 chordLvl: chordLvl + 1,
                 largestChordLvl: p.largestChordPerVoice[voiceIdx],
+                numVoices: p.voices.length,
             }))
         )
     );
 
     const parsedEvents = musicXMLToEvents(parsedMusicXml);
     return map(splitsToGenerate, (splitParams: SplitParams) => ({
-        ...parsedEvents,
         splitParams,
         output: generateOddVoiceJsonForSplit({ splitParams, ...parsedEvents }),
+        unparsedPartEvents: {
+            tempoEvents: parsedEvents?.tempoEvents,
+            noteEvents: filter(
+                parsedEvents?.noteEvents,
+                (e) =>
+                    e.partIdx === splitParams.partIdx &&
+                    e.voice === splitParams.voice &&
+                    e.chordLevel === splitParams.chordLvl
+            ),
+            lyricsEvents: filter(
+                parsedEvents?.lyricsEvents,
+                (e) =>
+                    e.partIdx === splitParams.partIdx &&
+                    e.voice === splitParams.voice &&
+                    e.chordLevel === splitParams.chordLvl
+            ),
+        },
     }));
 };
