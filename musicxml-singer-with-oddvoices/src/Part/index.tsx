@@ -69,10 +69,9 @@ export const Part: React.FC<PartProps> = ({
                     </Grid>
                 </Grid>
             ) : (
-                <Grid item container direction="row" justifyContent="flex-start" alignItems="center">
-                    <Typography variant="body2">
-                        <CircularProgress /> Generating audio output...
-                    </Typography>
+                <Grid item container direction="row" justifyContent="flex-start" alignItems="center" p={1} gap={3}>
+                    <CircularProgress size={20} />
+                    <Typography variant="subtitle1">Generating audio output...</Typography>
                 </Grid>
             )}
             <PartLyrics output={output} partIndex={partIndex} setOddVoiceOutputs={setOddVoiceOutputs} />
