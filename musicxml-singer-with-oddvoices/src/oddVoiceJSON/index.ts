@@ -26,7 +26,7 @@ import {
     isMeasureNote,
     parseVocalPartsFromRoot,
 } from "../musicXmlParsing";
-import { LETTERS_TO_AVOID_APPENDING, LYRICS_TO_CONSIDER_AS_CONTINUATIONS } from "./lyricsHelpers";
+import { LETTERS_TO_AVOID_APPENDING, LYRICS_TO_CONSIDER_AS_CONTINUATIONS, modifyLyricsForOddvoices } from "./lyricsHelpers";
 import {
     MeasureSound,
     MusicXmlJson,
@@ -502,9 +502,11 @@ export const generateOddVoiceJsonForSplit = ({
             e.partIdx === splitParams.partIdx && e.voice === splitParams.voice && e.chordLevel === splitParams.chordLvl
     );
 
-    partJson.lyrics = map(splitNoteEvents, (e) => e.lyrics ?? "")
-        .join("")
-        .trim();
+    partJson.lyrics = modifyLyricsForOddvoices(
+        map(splitNoteEvents, (e) => e.lyrics ?? "")
+            .join("")
+            .trim()
+    );
     partJson.events = flatMap(splitNoteEvents, (noteEvent, noteEventIdx) => {
         const { time, frequency, lyricsChanged, isStaccato, eventSeconds, isRest } = noteEvent;
         const newEvents = [];

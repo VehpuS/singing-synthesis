@@ -1,5 +1,5 @@
 import React from "react";
-import { map } from "lodash";
+import { every, forEach, isEqual, map } from "lodash";
 import {
     Accordion,
     AccordionDetails,
@@ -13,14 +13,15 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ErrorIcon from "@mui/icons-material/Error";
 
-import { PhonemeGuide } from "./PhonemeGuide";
+import { AboutSection } from "./AboutSection";
 import { OpenSheetMusicDisplay } from "./OpenSheetMusicDisplay";
-import { useOddVoicesApp } from "./oddvoices";
 import { MediaControls } from "./MediaControls";
 import { UploadButton } from "./UploadButton";
 import { LicenseFooter } from "./LicenseFooter";
-import { VoicePart } from "./VoicePart";
+import { Part } from "./Part";
 import { createSplitOddVoiceJsonInputsFromMusicXml } from "./oddVoiceJSON";
+import { useGenerateAudio } from "./useGenerateAudio";
+import { Voice } from "./oddvoices/oddvoicesUtils";
 
 import "./App.css";
 
@@ -29,14 +30,32 @@ function App() {
     const [oddVoiceOutputs, setOddVoiceOutputs] = React.useState<
         ReturnType<typeof createSplitOddVoiceJsonInputsFromMusicXml>
     >([]);
-    const [audioOutputs, setAudioOutputs] = React.useState<Uint8Array[]>([]);
-    if (oddVoiceOutputs.length > 0) {
-        console.log({ oddVoiceOutputs });
-    }
+    const previousOddVoiceOutputs = React.useRef(oddVoiceOutputs);
 
-    const { isLoadingApp, isLoadingVoice, voiceLoadingFailed, generateVoiceFromOddVoiceJson } = useOddVoicesApp();
+    const { audioOutputs, isLoadingApp, isLoadingVoice, voiceLoadingFailed, resetAudioOutputs, generateAudioForPart } =
+        useGenerateAudio();
 
-    const [isGeneratingAudio, setIsGeneratingAudio] = React.useState(false);
+    const [customVoicePerPart, setCustomVoicePerPart] = React.useState<Array<Voice | undefined>>([]);
+    const previousCustomVoicePerPart = React.useRef(customVoicePerPart);
+
+    const [, startTransition] = React.useTransition();
+    React.useEffect(() => {
+        forEach(oddVoiceOutputs, (oddVoiceOutput, i) => {
+            const oddVoiceJson = oddVoiceOutput?.output;
+            const partVoice = customVoicePerPart?.[i] ?? Voice.air;
+            const isNewPart = !audioOutputs?.[i];
+            const isNewJson = !isEqual(previousOddVoiceOutputs.current?.[i]?.output, oddVoiceJson);
+            const isNewVoice = (previousCustomVoicePerPart.current?.[i] ?? Voice.air) !== partVoice;
+            console.log(`Checking part ${i}`, { isNewPart, isNewJson, isNewVoice, oddVoiceJson });
+            if (oddVoiceJson && (isNewPart || isNewJson || isNewVoice)) {
+                startTransition(() => {
+                    generateAudioForPart(oddVoiceJson, i, partVoice);
+                });
+            }
+        });
+        previousOddVoiceOutputs.current = { ...oddVoiceOutputs };
+        previousCustomVoicePerPart.current = [...customVoicePerPart];
+    }, [startTransition, generateAudioForPart, audioOutputs, customVoicePerPart, oddVoiceOutputs]);
 
     return (
         <Paper elevation={1} sx={{ maxWidth: 800, paddingInline: 3, marginInline: 1 }}>
@@ -61,13 +80,13 @@ function App() {
                                 <ErrorIcon />
                                 Error loading voice!
                             </>
-                        ) : isGeneratingAudio ? (
+                        ) : !every(audioOutputs) ? (
                             <>
                                 <CircularProgress size={16} /> Generating audio...
                             </>
                         ) : isLoadingVoice ? (
                             <>
-                                <CircularProgress size={16} /> Loading voice...
+                                <CircularProgress size={16} /> Loading voices...
                             </>
                         ) : rawFile ? (
                             "View MusicXML"
@@ -101,11 +120,9 @@ function App() {
                         >
                             <UploadButton
                                 isLoadingVoice={isLoadingVoice}
-                                setIsGeneratingAudio={setIsGeneratingAudio}
                                 setOddVoiceOutputs={setOddVoiceOutputs}
-                                setAudioOutputs={setAudioOutputs}
+                                resetAudioOutputs={resetAudioOutputs}
                                 setRawFile={setRawFile}
-                                generateVoiceFromOddVoiceJson={generateVoiceFromOddVoiceJson}
                             />
                             {audioOutputs.length > 0 && <MediaControls />}
                         </Paper>
@@ -114,16 +131,19 @@ function App() {
                     <Grid container direction="column" gap={3} alignItems="center" paddingBlock={2}>
                         <Grid item container direction="column" gap={3} alignItems="center" alignSelf="center">
                             {map(oddVoiceOutputs, (oddVoiceOutput, i) => (
-                                <VoicePart
+                                <Part
                                     key={i}
                                     partIndex={i}
                                     output={oddVoiceOutput.output}
                                     splitParams={oddVoiceOutput.splitParams}
-                                    debugInfo={oddVoiceOutput.unparsedPartEvents}
+                                    debugInfo={oddVoiceOutput?.unparsedPartEvents}
+                                    lyricsEvents={oddVoiceOutput?.unparsedPartEvents?.lyricsEvents}
                                     audioOutput={audioOutputs[i]}
+                                    customVoiceForPart={customVoicePerPart?.[i] ?? Voice.air}
+                                    setCustomVoicePerPart={setCustomVoicePerPart}
+                                    setOddVoiceOutputs={setOddVoiceOutputs}
                                 />
                             ))}
-                            <Divider />
                         </Grid>
                     </Grid>
                 </>
@@ -135,7 +155,7 @@ function App() {
                         <Typography variant="h6">About Oddvoices</Typography>
                     </AccordionSummary>
                     <AccordionDetails>
-                        <PhonemeGuide />
+                        <AboutSection />
                     </AccordionDetails>
                 </Accordion>
             </Grid>

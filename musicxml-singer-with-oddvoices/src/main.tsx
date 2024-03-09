@@ -4,7 +4,9 @@ import ReactDOM from 'react-dom/client'
 
 import App from './App.tsx'
 
+import "react-json-view-lite/dist/index.css";
 import './index.css'
+
 
 const queryClient = new QueryClient()
 

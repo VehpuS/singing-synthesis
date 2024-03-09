@@ -1,11 +1,9 @@
 import React from "react";
-import { forEach } from "lodash";
 import { Button, styled } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 
 import { createSplitOddVoiceJsonInputsFromMusicXml } from "./oddVoiceJSON";
 import { parseXmlText } from "./musicXmlParsing/xmlHelpers";
-import { OddVoiceJSON } from "./oddVoiceJSON/oddVoiceHelpers";
 
 const VisuallyHiddenInput = styled("input")({
     clip: "rect(0 0 0 0)",
@@ -24,19 +22,36 @@ export const UploadButton: React.FC<{
     setOddVoiceOutputs: React.Dispatch<
         React.SetStateAction<ReturnType<typeof createSplitOddVoiceJsonInputsFromMusicXml>>
     >;
-    setAudioOutputs: React.Dispatch<React.SetStateAction<Uint8Array[]>>;
     setRawFile: React.Dispatch<React.SetStateAction<string>>;
-    setIsGeneratingAudio: React.Dispatch<React.SetStateAction<boolean>>;
-    generateVoiceFromOddVoiceJson: (oddVoiceJson: OddVoiceJSON) => Uint8Array | undefined;
-}> = ({
-    isLoadingVoice,
-    generateVoiceFromOddVoiceJson,
-    setIsGeneratingAudio,
-    setOddVoiceOutputs,
-    setAudioOutputs,
-    setRawFile,
-}) => {
+    resetAudioOutputs: () => void;
+}> = ({ isLoadingVoice, setOddVoiceOutputs, setRawFile, resetAudioOutputs }) => {
     const [, startTransition] = React.useTransition();
+
+    const loadMusicXmlFile: React.ChangeEventHandler<HTMLInputElement> = React.useCallback(
+        (e) => {
+            const file = e?.target?.files?.[0];
+            if (!file) {
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                if (!e?.target?.result) {
+                    return;
+                }
+                resetAudioOutputs();
+                setOddVoiceOutputs([]);
+                setRawFile("");
+                const rawText = e.target.result as string;
+                startTransition(() => {
+                    const newOddVoiceOutputs = createSplitOddVoiceJsonInputsFromMusicXml(parseXmlText(rawText));
+                    setOddVoiceOutputs(newOddVoiceOutputs);
+                    setRawFile(rawText);
+                });
+            };
+            reader.readAsText(file);
+        },
+        [resetAudioOutputs, setOddVoiceOutputs, setRawFile, startTransition]
+    );
 
     return (
         <Button
@@ -48,43 +63,7 @@ export const UploadButton: React.FC<{
             disabled={isLoadingVoice}
         >
             Upload file
-            <VisuallyHiddenInput
-                type="file"
-                onChange={(e) => {
-                    const file = e?.target?.files?.[0];
-                    if (!file) {
-                        return;
-                    }
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        if (!e?.target?.result) {
-                            return;
-                        }
-                        setIsGeneratingAudio(true);
-                        setOddVoiceOutputs([]);
-                        setAudioOutputs([]);
-                        setRawFile("");
-                        const rawText = e.target.result as string;
-                        startTransition(() => {
-                            const newOddVoiceOutputs = createSplitOddVoiceJsonInputsFromMusicXml(parseXmlText(rawText));
-                            setOddVoiceOutputs(newOddVoiceOutputs);
-                            setRawFile(rawText);
-                            const newAudioOutputs: Uint8Array[] = new Array(newOddVoiceOutputs.length);
-                            forEach(newOddVoiceOutputs, (oddVoiceOutput, i) => {
-                                const outputAudio = generateVoiceFromOddVoiceJson(oddVoiceOutput.output);
-                                if (!outputAudio || outputAudio.length === 0) {
-                                    console.error("Failed to generate audio output.");
-                                    return;
-                                }
-                                newAudioOutputs[i] = outputAudio;
-                            });
-                            setAudioOutputs(newAudioOutputs);
-                            setIsGeneratingAudio(false);
-                        });
-                    };
-                    reader.readAsText(file);
-                }}
-            />
+            <VisuallyHiddenInput type="file" onChange={loadMusicXmlFile} />
         </Button>
     );
 };

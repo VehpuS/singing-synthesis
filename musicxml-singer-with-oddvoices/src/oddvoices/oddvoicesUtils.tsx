@@ -1,5 +1,7 @@
 // From https://developer.mozilla.org/en-US/docs/Glossary/Base64.
 
+import { filter } from "lodash";
+
 function uint6ToB64(nUint6: number) {
     return nUint6 < 26
         ? nUint6 + 65
@@ -44,3 +46,5 @@ export enum Voice {
     cicada = "cicada",
     quake = "quake",
 }
+
+export const allVoices = filter(Object.keys(Voice), (v) => isNaN(Number(v)));
