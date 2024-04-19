@@ -588,25 +588,32 @@ export const musicXMLToEvents = (
                             }
                         });
 
+                        // Chords with no lyrics should have the previous lyrics added to them
                         if (!newLyricText && currChordLvl > 1) {
                             // Find the last lyric event for this part and voice with a lower chord level
                             const lastLyricEvent = findLast(
                                 lyricsEvents,
-                                (e) => e.partIdx === partIdx && e.voice === currentVoice
+                                (e) =>
+                                    e.partIdx === partIdx &&
+                                    e.voice === currentVoice &&
+                                    e.time === timeElapsedForPartAndVoice
                             );
                             if (lastLyricEvent) {
                                 const newLyricEvent = cloneDeep(lastLyricEvent);
-                                continuesPreviousLyric = Boolean(newLyricEvent.continuesPrevious);
-                                newLyricText = `${continuesPreviousLyric ? "" : " "}${newLyricEvent.lyric ?? ""}`;
                                 newLyricEvent.chordLevel = currChordLvl;
-                                console.log("Adding previous lyric", {
-                                    measureChild,
-                                    newLyricText,
-                                    partChordLyrics: partChordLyricsTexts[`${partIdx}_${currChordLvl}`],
-                                    lastLyricEvent,
-                                    newLyricEvent,
-                                });
-                                lyricsEvents.push(newLyricEvent);
+                                // Only add this event if it doesn't exist yet
+                                if (!find(lyricsEvents, newLyricEvent)) {
+                                    continuesPreviousLyric = Boolean(newLyricEvent.continuesPrevious);
+                                    newLyricText = `${continuesPreviousLyric ? "" : " "}${newLyricEvent.lyric ?? ""}`;
+                                    console.log("Adding previous lyric", {
+                                        measureChild,
+                                        newLyricText,
+                                        partChordLyrics: partChordLyricsTexts[`${partIdx}_${currChordLvl}`],
+                                        lastLyricEvent,
+                                        newLyricEvent,
+                                    });
+                                    lyricsEvents.push(newLyricEvent);
+                                }
                             }
                         }
 
