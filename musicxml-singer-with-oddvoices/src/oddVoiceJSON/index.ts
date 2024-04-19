@@ -13,7 +13,9 @@ import {
     slice,
     some,
     sortBy,
+    split,
     times,
+    uniq,
 } from "lodash";
 import { EventType, OddVoiceJSON, createdOddVoiceJSONEvent } from "./oddVoiceHelpers";
 import {
@@ -26,7 +28,12 @@ import {
     isMeasureNote,
     parseVocalPartsFromRoot,
 } from "../musicXmlParsing";
-import { LETTERS_TO_AVOID_APPENDING, LYRICS_TO_CONSIDER_AS_CONTINUATIONS, modifyLyricsForOddvoices } from "./lyricsHelpers";
+import {
+    LYRICS_TO_CONSIDER_AS_CONTINUATIONS,
+    LETTERS_TO_CONSIDER_APPENDING,
+    modifyLyricsForOddvoices,
+    VOWELS_WITHOUT_Y,
+} from "./lyricsHelpers";
 import {
     MeasureSound,
     MusicXmlJson,
@@ -170,6 +177,8 @@ export const musicXMLToEvents = (
     const lyricsEvents: MusicXmlLyricsEvent[] = [];
 
     const numMeasures = Math.max(...map(allPartsMeasures, (measuresInPart) => measuresInPart.length));
+
+    const partLyricsTexts: Dictionary<string> = {};
 
     for (let measureIdx = 0; measureIdx < numMeasures; measureIdx++) {
         // const measureChild = measureChildren[measureChildIdx];
@@ -328,10 +337,24 @@ export const musicXMLToEvents = (
                             (acc, e) => (acc + (e.continuesPrevious ? "" : " ") + e.lyric).trim(),
                             ""
                         );
+
+                        partLyricsTexts[partIdx] = partLyricsTexts[partIdx] ?? "";
                         let newLyricText = "";
 
                         const timeElapsedForPartAndVoice =
                             timeElapsedPerPartAndVoice?.[partIdx]?.[currentVoice] ?? timeElapsedAtStartOfMeasure;
+
+                        let continuesPreviousLyric = false;
+                        const staccatoEl = findChildByTagName(measureChild, "staccato");
+                        const { frequency, isUnpitched } = convertMusicXmlElementToHertz(measureChild);
+                        const lastPartVoiceChord = findLast(
+                            noteEvents,
+                            (e) => e.partIdx === partIdx && e.voice === currentVoice && e.chordLevel === currChordLvl
+                        );
+                        const lastPartVoiceChordFrequency = lastPartVoiceChord?.frequency;
+                        const lastPartVoiceChordIsUnpitched = lastPartVoiceChord?.isUnpitched;
+                        const didChangeFrequency =
+                            frequency !== lastPartVoiceChordFrequency || isUnpitched !== lastPartVoiceChordIsUnpitched;
 
                         forEach(getAllChildren(measureChild), (lyricEl) => {
                             if (!isLyric(lyricEl)) {
@@ -346,14 +369,53 @@ export const musicXMLToEvents = (
 
                             const newTextString = getTextNode(textEl as OrderedXMLNode<string, TextNode>)?.trim() ?? "";
                             if (!newTextString || LYRICS_TO_CONSIDER_AS_CONTINUATIONS.includes(newTextString)) {
-                                console.log("Lyrics continues previous", { lyricEl, newTextString });
+                                console.log("Lyrics are continuation strings, no need to add them", {
+                                    lyricEl,
+                                    newTextString,
+                                    LYRICS_TO_CONSIDER_AS_CONTINUATIONS,
+                                });
+                                if (didChangeFrequency) {
+                                    // But if this is a new sound, add it, with the last vowel of the previous lyric. Or add ah if nothing is found
+                                    const lastLyric =
+                                        previousLyricText || last(split(partLyricsTexts[partIdx], " ")) || "ah";
+                                    const lastVowelIndex = findLastIndex(
+                                        lastLyric,
+                                        (c) => !includes(VOWELS_WITHOUT_Y, c)
+                                    );
+                                    const continuationLyricString =
+                                        lastVowelIndex !== -1 ? lastLyric.slice(lastVowelIndex) : lastLyric;
+                                    newLyricText += continuationLyricString;
+                                    console.log("Adding continuation lyric", {
+                                        lyricEl,
+                                        newTextString,
+                                        newLyricText,
+                                        partLyrics: partLyricsTexts[partIdx],
+                                    });
+                                    lyricsEvents.push({
+                                        time: timeElapsedForPartAndVoice,
+                                        partIdx,
+                                        partName,
+                                        measureIdx,
+                                        voice: currentVoice,
+                                        chordLevel: currChordLvl,
+                                        lyric: continuationLyricString,
+                                        continuesPrevious: true,
+                                    });
+                                    continuesPreviousLyric = true;
+                                }
                                 return;
                             }
 
                             // If this is the first lyric, add it
                             if (!previousLyricText) {
                                 newLyricText += newTextString;
-                                console.log("First lyric", { lyricEl, newTextString, newLyricText });
+                                console.log("First lyric", {
+                                    lyricEl,
+                                    measureChild,
+                                    newTextString,
+                                    newLyricText,
+                                    partLyrics: partLyricsTexts[partIdx],
+                                });
                                 lyricsEvents.push({
                                     time: timeElapsedForPartAndVoice,
                                     partIdx,
@@ -375,10 +437,18 @@ export const musicXMLToEvents = (
                                 syllabicText === "single" ||
                                 syllabicText === "begin" ||
                                 // Add lyrics that are not vowels / h as a new syllable
-                                !includes(LETTERS_TO_AVOID_APPENDING, newTextString[0])
+                                !includes(LETTERS_TO_CONSIDER_APPENDING, newTextString[0])
                             ) {
                                 newLyricText += ` ${newTextString}`;
-                                console.log("Adding new syllable", { lyricEl, newTextString, newLyricText });
+                                console.log("Adding new syllable", {
+                                    lyricEl,
+                                    measureChild,
+                                    newTextString,
+                                    newLyricText,
+                                    partLyrics: partLyricsTexts[partIdx],
+                                    syllabicText,
+                                    LETTERS_TO_CONSIDER_APPENDING,
+                                });
                                 lyricsEvents.push({
                                     time: timeElapsedForPartAndVoice,
                                     partIdx,
@@ -404,10 +474,35 @@ export const musicXMLToEvents = (
                                 }
                             }
 
+                            if (firstNewLetter === newTextString.length && didChangeFrequency) {
+                                // If this is a new sound, add it, with the last vowel of the previous lyric or the whole previous lyric if no vowel is found
+                                const lastVowelIndex = findLastIndex(
+                                    newTextString,
+                                    (c) => !includes(VOWELS_WITHOUT_Y, c)
+                                );
+                                firstNewLetter = lastVowelIndex !== -1 ? lastVowelIndex + 1 : 0;
+                            }
+
                             const newText = newTextString.slice(firstNewLetter).trim();
                             if (newText) {
-                                console.log("Adding new syllable", { lyricEl, newText, newLyricText });
-                                newLyricText += ` ${newText}`;
+                                // If the new text is only one letter, it's likely an ending consonant, h or y
+                                const isNewTextOnlyOneLetter = uniq(newText).length === 1;
+                                // If the new text is a vowel without y, it's going to form a new sound
+                                const isVowerWithoutY = includes(VOWELS_WITHOUT_Y, newText[0]);
+                                continuesPreviousLyric =
+                                    !staccatoEl && !didChangeFrequency && isNewTextOnlyOneLetter && !isVowerWithoutY;
+                                newLyricText += `${continuesPreviousLyric ? "" : " "}${newText}`;
+                                console.log("Adding after new letter", {
+                                    lyricEl,
+                                    measureChild,
+                                    newText,
+                                    newLyricText,
+                                    partLyrics: partLyricsTexts[partIdx],
+                                    firstNewLetter,
+                                    newTextString,
+                                    lastLetterInPreviousLyric,
+                                    continuesPreviousLyric,
+                                });
                                 lyricsEvents.push({
                                     time: timeElapsedForPartAndVoice,
                                     partIdx,
@@ -416,29 +511,16 @@ export const musicXMLToEvents = (
                                     voice: currentVoice,
                                     chordLevel: currChordLvl,
                                     lyric: newText,
-                                    continuesPrevious: false,
+                                    continuesPrevious: continuesPreviousLyric,
                                 });
                                 return;
                             }
                         });
 
-                        // if (!hasVoiceLyric && previousLyricText && !newLyricText) {
-                        //     // If voice has no lyrics, but the part does, add the previous lyric
-                        //     console.log("Adding previous lyric", { previousLyricText });
-                        //     newLyricText += previousLyricText;
-                        //     lyricsEvents.push({
-                        //         time: timeElapsedForPartAndVoice,
-                        //         partIdx,
-                        //         partName,
-                        //         measureIdx,
-                        //         chordLevel: currChordLvl,
-                        //         voice: currentVoice,
-                        //         lyric: previousLyricText,
-                        //         continuesPrevious: false,
-                        //     });
-                        // }
-
                         const lyricsChanged = Boolean(newLyricText);
+
+                        // Update the lyrics for the part
+                        partLyricsTexts[partIdx] += newLyricText;
 
                         if (!durationText) {
                             throw new Error(`No duration element found: ${JSON.stringify(measureChild)}`);
@@ -446,27 +528,46 @@ export const musicXMLToEvents = (
                         const duration = parseFloat(durationText);
 
                         const eventSeconds = durationToSeconds(duration, currentDivisions, currentTempo);
-                        const { frequency, isUnpitched } = convertMusicXmlElementToHertz(measureChild);
                         console.log(
                             `Note number ${measureChildIdx} with duration ${duration} (${eventSeconds} seconds) and frequency ${frequency}`
                         );
 
-                        const staccatoEl = findChildByTagName(measureChild, "staccato");
-                        noteEvents.push({
-                            time: timeElapsedForPartAndVoice,
-                            partIdx,
-                            partName,
-                            measureIdx,
-                            voice: currentVoice,
-                            chordLevel: currChordLvl,
-                            eventSeconds,
-                            frequency,
-                            isRest: false,
-                            lyricsChanged,
-                            lyrics: newLyricText,
-                            isStaccato: Boolean(staccatoEl),
-                            isUnpitched,
-                        });
+                        if (
+                            continuesPreviousLyric &&
+                            lastPartVoiceChord &&
+                            lastPartVoiceChord.eventSeconds !== undefined &&
+                            lastPartVoiceChord.eventSeconds !== null
+                        ) {
+                            lastPartVoiceChord.lyrics += newLyricText;
+                            lastPartVoiceChord.lyricsChanged = lyricsChanged;
+                            lastPartVoiceChord.eventSeconds += eventSeconds;
+                        } else {
+                            if (continuesPreviousLyric) {
+                                console.warn("Continues previous lyric but no previous note found", {
+                                    partIdx,
+                                    currentVoice,
+                                    currChordLvl,
+                                    newLyricText,
+                                    partLyrics: partLyricsTexts[partIdx],
+                                    lastPartVoiceChord,
+                                });
+                            }
+                            noteEvents.push({
+                                time: timeElapsedForPartAndVoice,
+                                partIdx,
+                                partName,
+                                measureIdx,
+                                voice: currentVoice,
+                                chordLevel: currChordLvl,
+                                eventSeconds,
+                                frequency,
+                                isRest: false,
+                                lyricsChanged,
+                                lyrics: newLyricText,
+                                isStaccato: Boolean(staccatoEl),
+                                isUnpitched,
+                            });
+                        }
                         const currentChordDuration =
                             currentChordDurationPerPartAndVoice?.[partIdx]?.[currentVoice] ?? 0;
                         currentChordDurationPerPartAndVoice[partIdx] =

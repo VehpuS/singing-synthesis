@@ -1,6 +1,7 @@
 export const LYRICS_TO_CONSIDER_AS_CONTINUATIONS = ["", "-", "_", "..."];
 
-export const LETTERS_TO_AVOID_APPENDING = ["a", "e", "i", "o", "u", "h"];
+export const VOWELS_WITHOUT_Y = ["a", "e", "i", "o", "u"];
+export const LETTERS_TO_CONSIDER_APPENDING = [...VOWELS_WITHOUT_Y, "h"];
 
 export const modifyLyricsForOddvoices = (lyrics: string): string => {
     let modifiedLyrics = lyrics;
