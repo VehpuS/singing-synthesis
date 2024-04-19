@@ -49,7 +49,7 @@ export const Part: React.FC<PartProps> = ({
                         {splitParams.partName}
                         {splitParams.numVoices > 1 ? ` (voice ${splitParams.voice})` : ""}
                         {splitParams.largestChordLvl > 1
-                            ? ` - chord level ${splitParams.chordLvl}/${splitParams.largestChordLvl}`
+                            ? ` - chord level ${splitParams.chordLevel}/${splitParams.largestChordLvl}`
                             : ""}
                     </Typography>
                 </Grid>

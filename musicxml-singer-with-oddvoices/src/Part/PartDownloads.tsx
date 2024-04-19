@@ -13,7 +13,7 @@ export interface PartDownloadsProps {
 
 export const PartDownloads: React.FC<PartDownloadsProps> = ({ output, splitParams, audioOutput }) => {
     const fileNamePrefix = `${splitParams.partName}${splitParams.numVoices > 1 ? `_(voice_${splitParams.voice})` : ""}${
-        splitParams.largestChordLvl > 1 ? `_chord-level_${splitParams.chordLvl}-${splitParams.largestChordLvl}` : ""
+        splitParams.largestChordLvl > 1 ? `_chord-level_${splitParams.chordLevel}-${splitParams.largestChordLvl}` : ""
     }`;
 
     return (

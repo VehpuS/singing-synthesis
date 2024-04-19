@@ -1,7 +1,9 @@
 import {
     Dictionary,
+    cloneDeep,
     compact,
     filter,
+    find,
     findLast,
     findLastIndex,
     flatMap,
@@ -9,7 +11,9 @@ import {
     includes,
     last,
     map,
+    pick,
     reduce,
+    reject,
     slice,
     some,
     sortBy,
@@ -64,7 +68,7 @@ export interface SplitParams {
     partIdx: number;
     partName: string;
     voice: number | string;
-    chordLvl: number;
+    chordLevel: number;
     largestChordLvl: number;
     numVoices: number;
 }
@@ -178,7 +182,7 @@ export const musicXMLToEvents = (
 
     const numMeasures = Math.max(...map(allPartsMeasures, (measuresInPart) => measuresInPart.length));
 
-    const partLyricsTexts: Dictionary<string> = {};
+    const partChordLyricsTexts: Dictionary<string> = {};
 
     for (let measureIdx = 0; measureIdx < numMeasures; measureIdx++) {
         // const measureChild = measureChildren[measureChildIdx];
@@ -248,13 +252,70 @@ export const musicXMLToEvents = (
                 } else {
                     // chord detection https://www.w3.org/2021/06/musicxml40/musicxml-reference/elements/chord/
                     const chordEl = findChildByTagName(measureChild, "chord");
+
+                    const timeElapsedForPartAndVoice =
+                        timeElapsedPerPartAndVoice?.[partIdx]?.[currentVoice] ?? timeElapsedAtStartOfMeasure;
+
                     if (chordEl) {
                         currChordLvl += 1;
+
+                        const lastChordEvent = findLast(
+                            noteEvents,
+                            (e) => e.partIdx === partIdx && e.voice === currentVoice && e.chordLevel === currChordLvl
+                        );
+                        const lastChordEventTime = lastChordEvent?.time ?? 0;
+                        // Find all note events after the last chord event and add them to this chord level as rests
+                        const restEvents = filter(noteEvents, (e) =>
+                            Boolean(
+                                e.partIdx === partIdx &&
+                                    e.voice === currentVoice &&
+                                    e.time >= lastChordEventTime &&
+                                    e.time < timeElapsedForPartAndVoice
+                            )
+                        );
+                        console.log("Found rest events", {
+                            restEvents,
+                            noteEvents: [...noteEvents],
+                            lastChordEvent,
+                            timeElapsedForPartAndVoice,
+                        });
+                        forEach(restEvents, (restEvent) => {
+                            // Check if a rest event already exists for this chord level at this time
+                            const existingRestEvent = find(
+                                noteEvents,
+                                (e) =>
+                                    e.partIdx === partIdx &&
+                                    e.voice === currentVoice &&
+                                    e.time === restEvent.time &&
+                                    e.chordLevel === currChordLvl
+                            );
+                            if (existingRestEvent) {
+                                console.log("Event already exists for this chord level at this time", {
+                                    restEvent,
+                                    existingRestEvent,
+                                });
+                                return;
+                            }
+                            const newRestEvent = cloneDeep(
+                                pick(restEvent, [
+                                    "time",
+                                    "partIdx",
+                                    "partName",
+                                    "measureIdx",
+                                    "voice",
+                                    "eventSeconds",
+                                    // These will be replaced
+                                    "chordLevel",
+                                    "isRest",
+                                ])
+                            );
+                            newRestEvent.isRest = true;
+                            newRestEvent.chordLevel = currChordLvl;
+
+                            noteEvents.push(newRestEvent);
+                        });
                     } else {
                         currChordLvl = 1;
-
-                        const timeElapsedForPartAndVoice =
-                            timeElapsedPerPartAndVoice?.[partIdx]?.[currentVoice] ?? timeElapsedAtStartOfMeasure;
 
                         const previousChordDuration =
                             currentChordDurationPerPartAndVoice?.[partIdx]?.[currentVoice] ?? 0;
@@ -338,7 +399,8 @@ export const musicXMLToEvents = (
                             ""
                         );
 
-                        partLyricsTexts[partIdx] = partLyricsTexts[partIdx] ?? "";
+                        partChordLyricsTexts[`${partIdx}_${currChordLvl}`] =
+                            partChordLyricsTexts[`${partIdx}_${currChordLvl}`] ?? "";
                         let newLyricText = "";
 
                         const timeElapsedForPartAndVoice =
@@ -353,8 +415,11 @@ export const musicXMLToEvents = (
                         );
                         const lastPartVoiceChordFrequency = lastPartVoiceChord?.frequency;
                         const lastPartVoiceChordIsUnpitched = lastPartVoiceChord?.isUnpitched;
+                        const lastPartVoiceChordIsRest = lastPartVoiceChord?.isRest;
                         const didChangeFrequency =
-                            frequency !== lastPartVoiceChordFrequency || isUnpitched !== lastPartVoiceChordIsUnpitched;
+                            lastPartVoiceChordIsRest ||
+                            frequency !== lastPartVoiceChordFrequency ||
+                            isUnpitched !== lastPartVoiceChordIsUnpitched;
 
                         forEach(getAllChildren(measureChild), (lyricEl) => {
                             if (!isLyric(lyricEl)) {
@@ -377,7 +442,9 @@ export const musicXMLToEvents = (
                                 if (didChangeFrequency) {
                                     // But if this is a new sound, add it, with the last vowel of the previous lyric. Or add ah if nothing is found
                                     const lastLyric =
-                                        previousLyricText || last(split(partLyricsTexts[partIdx], " ")) || "ah";
+                                        previousLyricText ||
+                                        last(split(partChordLyricsTexts[`${partIdx}_${currChordLvl}`], " ")) ||
+                                        "ah";
                                     const lastVowelIndex = findLastIndex(
                                         lastLyric,
                                         (c) => !includes(VOWELS_WITHOUT_Y, c)
@@ -389,7 +456,7 @@ export const musicXMLToEvents = (
                                         lyricEl,
                                         newTextString,
                                         newLyricText,
-                                        partLyrics: partLyricsTexts[partIdx],
+                                        partChordLyrics: partChordLyricsTexts[`${partIdx}_${currChordLvl}`],
                                     });
                                     lyricsEvents.push({
                                         time: timeElapsedForPartAndVoice,
@@ -399,9 +466,9 @@ export const musicXMLToEvents = (
                                         voice: currentVoice,
                                         chordLevel: currChordLvl,
                                         lyric: continuationLyricString,
-                                        continuesPrevious: true,
+                                        continuesPrevious: !lastPartVoiceChordIsRest,
                                     });
-                                    continuesPreviousLyric = true;
+                                    continuesPreviousLyric = !lastPartVoiceChordIsRest;
                                 }
                                 return;
                             }
@@ -414,7 +481,7 @@ export const musicXMLToEvents = (
                                     measureChild,
                                     newTextString,
                                     newLyricText,
-                                    partLyrics: partLyricsTexts[partIdx],
+                                    partChordLyrics: partChordLyricsTexts[`${partIdx}_${currChordLvl}`],
                                 });
                                 lyricsEvents.push({
                                     time: timeElapsedForPartAndVoice,
@@ -445,7 +512,7 @@ export const musicXMLToEvents = (
                                     measureChild,
                                     newTextString,
                                     newLyricText,
-                                    partLyrics: partLyricsTexts[partIdx],
+                                    partChordLyrics: partChordLyricsTexts[`${partIdx}_${currChordLvl}`],
                                     syllabicText,
                                     LETTERS_TO_CONSIDER_APPENDING,
                                 });
@@ -490,14 +557,18 @@ export const musicXMLToEvents = (
                                 // If the new text is a vowel without y, it's going to form a new sound
                                 const isVowerWithoutY = includes(VOWELS_WITHOUT_Y, newText[0]);
                                 continuesPreviousLyric =
-                                    !staccatoEl && !didChangeFrequency && isNewTextOnlyOneLetter && !isVowerWithoutY;
+                                    isNewTextOnlyOneLetter &&
+                                    !isVowerWithoutY &&
+                                    !lastPartVoiceChordIsRest &&
+                                    !didChangeFrequency &&
+                                    !staccatoEl;
                                 newLyricText += `${continuesPreviousLyric ? "" : " "}${newText}`;
                                 console.log("Adding after new letter", {
                                     lyricEl,
                                     measureChild,
                                     newText,
                                     newLyricText,
-                                    partLyrics: partLyricsTexts[partIdx],
+                                    partChordLyrics: partChordLyricsTexts[`${partIdx}_${currChordLvl}`],
                                     firstNewLetter,
                                     newTextString,
                                     lastLetterInPreviousLyric,
@@ -517,10 +588,32 @@ export const musicXMLToEvents = (
                             }
                         });
 
+                        if (!newLyricText && currChordLvl > 1) {
+                            // Find the last lyric event for this part and voice with a lower chord level
+                            const lastLyricEvent = findLast(
+                                lyricsEvents,
+                                (e) => e.partIdx === partIdx && e.voice === currentVoice
+                            );
+                            if (lastLyricEvent) {
+                                const newLyricEvent = cloneDeep(lastLyricEvent);
+                                continuesPreviousLyric = Boolean(newLyricEvent.continuesPrevious);
+                                newLyricText = `${continuesPreviousLyric ? "" : " "}${newLyricEvent.lyric ?? ""}`;
+                                newLyricEvent.chordLevel = currChordLvl;
+                                console.log("Adding previous lyric", {
+                                    measureChild,
+                                    newLyricText,
+                                    partChordLyrics: partChordLyricsTexts[`${partIdx}_${currChordLvl}`],
+                                    lastLyricEvent,
+                                    newLyricEvent,
+                                });
+                                lyricsEvents.push(newLyricEvent);
+                            }
+                        }
+
                         const lyricsChanged = Boolean(newLyricText);
 
                         // Update the lyrics for the part
-                        partLyricsTexts[partIdx] += newLyricText;
+                        partChordLyricsTexts[`${partIdx}_${currChordLvl}`] += newLyricText;
 
                         if (!durationText) {
                             throw new Error(`No duration element found: ${JSON.stringify(measureChild)}`);
@@ -548,7 +641,7 @@ export const musicXMLToEvents = (
                                     currentVoice,
                                     currChordLvl,
                                     newLyricText,
-                                    partLyrics: partLyricsTexts[partIdx],
+                                    partChordLyrics: partChordLyricsTexts[`${partIdx}_${currChordLvl}`],
                                     lastPartVoiceChord,
                                 });
                             }
@@ -600,11 +693,13 @@ export const generateOddVoiceJsonForSplit = ({
     const splitNoteEvents = filter(
         noteEvents,
         (e) =>
-            e.partIdx === splitParams.partIdx && e.voice === splitParams.voice && e.chordLevel === splitParams.chordLvl
+            e.partIdx === splitParams.partIdx &&
+            e.voice === splitParams.voice &&
+            e.chordLevel === splitParams.chordLevel
     );
 
     partJson.lyrics = modifyLyricsForOddvoices(
-        map(splitNoteEvents, (e) => e.lyrics ?? "")
+        map(reject(splitNoteEvents, "isRest"), (e) => e.lyrics ?? "")
             .join("")
             .trim()
     );
@@ -705,11 +800,11 @@ export const createSplitOddVoiceJsonInputsFromMusicXml = (
 
     const splitsToGenerate: SplitParams[] = flatMap(partsDetails, (p) =>
         flatMap(p.voices, (voice, voiceIdx) =>
-            times(p.largestChordPerVoice[voiceIdx], (chordLvl) => ({
+            times(p.largestChordPerVoice[voiceIdx], (chordLevel) => ({
                 partIdx: p.partIdx,
                 partName: p.partName,
                 voice,
-                chordLvl: chordLvl + 1,
+                chordLevel: chordLevel + 1,
                 largestChordLvl: p.largestChordPerVoice[voiceIdx],
                 numVoices: p.voices.length,
             }))
@@ -727,14 +822,14 @@ export const createSplitOddVoiceJsonInputsFromMusicXml = (
                 (e) =>
                     e.partIdx === splitParams.partIdx &&
                     e.voice === splitParams.voice &&
-                    e.chordLevel === splitParams.chordLvl
+                    e.chordLevel === splitParams.chordLevel
             ),
             lyricsEvents: filter(
                 parsedEvents?.lyricsEvents,
                 (e) =>
                     e.partIdx === splitParams.partIdx &&
                     e.voice === splitParams.voice &&
-                    e.chordLevel === splitParams.chordLvl
+                    e.chordLevel === splitParams.chordLevel
             ),
         },
     }));
