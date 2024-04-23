@@ -2,22 +2,22 @@ import React from "react";
 import { MenuItem, Select } from "@mui/material";
 import { map } from "lodash";
 
-import { Voice, allVoices } from "../oddvoices/oddvoicesUtils";
+import { Voice, allVoices } from "../../oddvoices/oddvoicesUtils";
 
 export interface VoiceSelectProps {
-    partIndex: number;
+    splitIndex: number;
     customVoiceForPart?: Voice;
     setCustomVoicePerPart: React.Dispatch<React.SetStateAction<Array<Voice | undefined>>>;
 }
 
-export const VoiceSelect: React.FC<VoiceSelectProps> = ({ customVoiceForPart, partIndex, setCustomVoicePerPart }) => {
+export const VoiceSelect: React.FC<VoiceSelectProps> = ({ customVoiceForPart, splitIndex, setCustomVoicePerPart }) => {
     const setCustomVoiceForPart = React.useCallback(
         (voice: Voice) =>
             setCustomVoicePerPart((prev) => {
-                prev[partIndex] = voice;
+                prev[splitIndex] = voice;
                 return [...prev];
             }),
-        [setCustomVoicePerPart, partIndex]
+        [setCustomVoicePerPart, splitIndex]
     );
 
     return (

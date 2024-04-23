@@ -1,7 +1,7 @@
 import React from "react";
 import { Grid, Typography } from "@mui/material";
 
-import { PhonemeGuide } from "./PhonemeGuide";
+import { PhonemeGuide } from "../PhonemeGuide";
 
 export const AboutSection: React.FC = () => {
     return (

@@ -4,11 +4,11 @@ import { JsonView, collapseAllNested, darkStyles } from "react-json-view-lite";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import { PartAudio } from "./PartAudio";
-import { SplitParams, createSplitOddVoiceJsonInputsFromMusicXml } from "../oddVoiceJSON";
-import { OddVoiceJSON } from "../oddVoiceJSON/oddVoiceHelpers";
-import { Voice } from "../oddvoices/oddvoicesUtils";
+import { SplitParams, createSplitOddVoiceJsonInputsFromMusicXml } from "../../oddVoiceJSON";
+import { OddVoiceJSON } from "../../oddVoiceJSON/oddVoiceHelpers";
+import { Voice } from "../../oddvoices/oddvoicesUtils";
+import { MusicXmlLyricsEvent } from "../../musicXmlParsing/types";
 import { CopyIconButton } from "../CopyIconButton";
-import { MusicXmlLyricsEvent } from "../musicXmlParsing/types";
 import { VoiceSelect } from "./VoiceSelect";
 import { PartDownloads } from "./PartDownloads";
 import { PartLyrics } from "./PartLyrics";
@@ -17,7 +17,7 @@ export interface PartProps {
     output: OddVoiceJSON;
     splitParams: SplitParams;
     audioOutput?: Uint8Array;
-    partIndex: number;
+    splitIndex: number;
     lyricsEvents: MusicXmlLyricsEvent[];
     debugInfo?: object;
     customVoiceForPart?: Voice;
@@ -32,7 +32,7 @@ export const Part: React.FC<PartProps> = ({
     output,
     splitParams,
     audioOutput,
-    partIndex,
+    splitIndex,
     debugInfo,
     lyricsEvents,
     setCustomVoicePerPart,
@@ -42,7 +42,7 @@ export const Part: React.FC<PartProps> = ({
         <Grid item container direction="column">
             <Grid item container direction="row" justifyContent="flex-start" alignItems="center" gap={2} pb={1}>
                 <Grid item>
-                    <Typography variant="subtitle1">Part {partIndex + 1}</Typography>
+                    <Typography variant="subtitle1">Part {splitIndex + 1}</Typography>
                 </Grid>
                 <Grid item>
                     <Typography variant="h6" color="primary">
@@ -63,7 +63,7 @@ export const Part: React.FC<PartProps> = ({
                     <Grid item>
                         <VoiceSelect
                             customVoiceForPart={customVoiceForPart}
-                            partIndex={partIndex}
+                            splitIndex={splitIndex}
                             setCustomVoicePerPart={setCustomVoicePerPart}
                         />
                     </Grid>
@@ -74,7 +74,7 @@ export const Part: React.FC<PartProps> = ({
                     <Typography variant="subtitle1">Generating audio output...</Typography>
                 </Grid>
             )}
-            <PartLyrics output={output} partIndex={partIndex} setOddVoiceOutputs={setOddVoiceOutputs} />
+            <PartLyrics output={output} splitIndex={splitIndex} setOddVoiceOutputs={setOddVoiceOutputs} />
             <Accordion>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Grid container direction="row" justifyContent="flex-start" alignItems="center" gap={1}>

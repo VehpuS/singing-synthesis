@@ -13,15 +13,15 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ErrorIcon from "@mui/icons-material/Error";
 
-import { AboutSection } from "./AboutSection";
-import { OpenSheetMusicDisplay } from "./OpenSheetMusicDisplay";
-import { MediaControls } from "./MediaControls";
-import { UploadButton } from "./UploadButton";
-import { LicenseFooter } from "./LicenseFooter";
-import { Part } from "./Part";
-import { createSplitOddVoiceJsonInputsFromMusicXml } from "./oddVoiceJSON";
+import { AboutSection } from "../AboutSection";
+import { OpenSheetMusicDisplay } from "../OpenSheetMusicDisplay";
+import { MediaControls } from "../MediaControls";
+import { UploadButton } from "../UploadButton";
+import { LicenseFooter } from "../LicenseFooter";
+import { Part } from "../Part";
+import { createSplitOddVoiceJsonInputsFromMusicXml } from "../../oddVoiceJSON";
 import { useGenerateAudio } from "./useGenerateAudio";
-import { Voice } from "./oddvoices/oddvoicesUtils";
+import { Voice } from "../../oddvoices/oddvoicesUtils";
 
 import "./App.css";
 
@@ -133,7 +133,7 @@ function App() {
                             {map(oddVoiceOutputs, (oddVoiceOutput, i) => (
                                 <Part
                                     key={i}
-                                    partIndex={i}
+                                    splitIndex={i}
                                     output={oddVoiceOutput.output}
                                     splitParams={oddVoiceOutput.splitParams}
                                     debugInfo={oddVoiceOutput?.unparsedPartEvents}

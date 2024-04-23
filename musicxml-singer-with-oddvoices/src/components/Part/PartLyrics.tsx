@@ -11,25 +11,25 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { cloneDeep } from "lodash";
 
-import { createSplitOddVoiceJsonInputsFromMusicXml } from "../oddVoiceJSON";
-import { OddVoiceJSON } from "../oddVoiceJSON/oddVoiceHelpers";
+import { createSplitOddVoiceJsonInputsFromMusicXml } from "../../oddVoiceJSON";
+import { OddVoiceJSON } from "../../oddVoiceJSON/oddVoiceHelpers";
 import { CopyIconButton } from "../CopyIconButton";
 
 export interface PartLyricsProps {
     output: OddVoiceJSON;
-    partIndex: number;
+    splitIndex: number;
     setOddVoiceOutputs: React.Dispatch<
         React.SetStateAction<ReturnType<typeof createSplitOddVoiceJsonInputsFromMusicXml>>
     >;
 }
 
-export const PartLyrics: React.FC<PartLyricsProps> = ({ output, partIndex, setOddVoiceOutputs }) => {
+export const PartLyrics: React.FC<PartLyricsProps> = ({ output, splitIndex, setOddVoiceOutputs }) => {
     const generatedLyrics = React.useRef<string | undefined>(output?.lyrics);
     React.useEffect(() => {
-        if (!generatedLyrics.current && output.lyrics) {
-            generatedLyrics.current = output.lyrics;
+        if (!generatedLyrics.current && output?.lyrics) {
+            generatedLyrics.current = output?.lyrics;
         }
-    }, [output.lyrics]);
+    }, [output?.lyrics]);
 
     const [isEditingLyrics, setIsEditingLyrics] = React.useState<boolean>(false);
     const [newDraftLyrics, setDraftLyrics] = React.useState<string | null>(null);
@@ -38,24 +38,24 @@ export const PartLyrics: React.FC<PartLyricsProps> = ({ output, partIndex, setOd
 
     const saveNewLyrics = React.useCallback(
         (newLyrics: string) => {
-            if (newLyrics && newLyrics !== output.lyrics) {
+            if (newLyrics && newLyrics !== output?.lyrics) {
                 setOddVoiceOutputs((prev) => {
                     const newOutputs = [...prev];
-                    newOutputs[partIndex] = cloneDeep(newOutputs[partIndex]);
-                    newOutputs[partIndex].output.lyrics = newLyrics;
+                    newOutputs[splitIndex] = cloneDeep(newOutputs[splitIndex]);
+                    newOutputs[splitIndex].output.lyrics = newLyrics;
                     return newOutputs;
                 });
             }
             setDraftLyrics(null);
             setIsEditingLyrics(false);
         },
-        [setOddVoiceOutputs, partIndex, output.lyrics]
+        [setOddVoiceOutputs, splitIndex, output?.lyrics]
     );
     return (
         <Accordion>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Grid container direction="row" justifyContent="flex-start" alignItems="center" gap={1}>
-                    <CopyIconButton text={output.lyrics} />
+                    <CopyIconButton text={output?.lyrics} />
                     <Typography variant="subtitle2">Lyrics</Typography>
                 </Grid>
             </AccordionSummary>
@@ -75,7 +75,7 @@ export const PartLyrics: React.FC<PartLyricsProps> = ({ output, partIndex, setOd
                                     <Button
                                         variant="contained"
                                         onClick={() => saveNewLyrics(draftLyrics)}
-                                        disabled={draftLyrics === output.lyrics}
+                                        disabled={draftLyrics === output?.lyrics}
                                     >
                                         Save
                                     </Button>
@@ -85,7 +85,7 @@ export const PartLyrics: React.FC<PartLyricsProps> = ({ output, partIndex, setOd
                                     <Button
                                         variant="contained"
                                         onClick={() => {
-                                            setDraftLyrics(output.lyrics);
+                                            setDraftLyrics(output?.lyrics);
                                         }}
                                     >
                                         Reset

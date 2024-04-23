@@ -3,8 +3,8 @@ import { Chip, Grid } from "@mui/material";
 import DataObjectIcon from "@mui/icons-material/DataObject";
 import GraphicEqIcon from "@mui/icons-material/GraphicEq";
 
-import { SplitParams } from "../oddVoiceJSON";
-import { OddVoiceJSON } from "../oddVoiceJSON/oddVoiceHelpers";
+import { SplitParams } from "../../oddVoiceJSON";
+import { OddVoiceJSON } from "../../oddVoiceJSON/oddVoiceHelpers";
 export interface PartDownloadsProps {
     output: OddVoiceJSON;
     splitParams: SplitParams;

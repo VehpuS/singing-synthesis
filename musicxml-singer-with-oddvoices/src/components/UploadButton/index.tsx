@@ -2,8 +2,8 @@ import React from "react";
 import { Button, styled } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 
-import { createSplitOddVoiceJsonInputsFromMusicXml } from "./oddVoiceJSON";
-import { parseXmlText } from "./musicXmlParsing/xmlHelpers";
+import { createSplitOddVoiceJsonInputsFromMusicXml } from "../../oddVoiceJSON";
+import { parseXmlText } from "../../musicXmlParsing/xmlHelpers";
 
 const VisuallyHiddenInput = styled("input")({
     clip: "rect(0 0 0 0)",

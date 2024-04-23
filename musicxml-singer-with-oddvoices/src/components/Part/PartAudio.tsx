@@ -1,8 +1,8 @@
 import React from "react";
 import { forEach } from "lodash";
 
-import { base64EncArr } from "../oddvoices/oddvoicesUtils";
-import { MusicXmlLyricsEvent } from "../musicXmlParsing/types";
+import { base64EncArr } from "../../oddvoices/oddvoicesUtils";
+import { MusicXmlLyricsEvent } from "../../musicXmlParsing/types";
 
 export interface PartAudioProps {
     audioOutput?: Uint8Array;

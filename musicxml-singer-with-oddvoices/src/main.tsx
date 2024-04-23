@@ -2,7 +2,7 @@ import React from 'react'
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import ReactDOM from 'react-dom/client'
 
-import App from './App.tsx'
+import App from './components/App'
 
 import "react-json-view-lite/dist/index.css";
 import './index.css'
