@@ -13,6 +13,12 @@ export const modifyLyricsForOddvoices = (lyrics: string): string => {
 
     // Replace all whitespace with a single space
     modifiedLyrics = modifiedLyrics.replace(/\s+/g, " ");
+
+    // Replace all repeated oos (more than 2) with 2 o's. For example, "Ooo" -> "Oo"
+    // For some reason oddvoices doesn't like more than 2 o's in a row (it will split them into separate notes)
+    modifiedLyrics = modifiedLyrics.replace(/Ooo+/g, "Oo");
+    modifiedLyrics = modifiedLyrics.replace(/ooo+/g, "oo");
+
     modifiedLyrics = modifiedLyrics.trim();
     return modifiedLyrics;
 };
