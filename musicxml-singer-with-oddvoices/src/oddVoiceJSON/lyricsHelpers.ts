@@ -19,6 +19,11 @@ export const modifyLyricsForOddvoices = (lyrics: string): string => {
     modifiedLyrics = modifiedLyrics.replace(/Ooo+/g, "Oo");
     modifiedLyrics = modifiedLyrics.replace(/ooo+/g, "oo");
 
+    // Replace all repeated aas (more than 2) with ah. For example, "Aaaa" -> "Ah"
+    // For some reason, oddvoices will read "aa" as "ay ay" instead of "ah", and splitting them into separate notes
+    modifiedLyrics = modifiedLyrics.replace(/Aa+/g, "Ah");
+    modifiedLyrics = modifiedLyrics.replace(/aa+/g, "ah");
+
     modifiedLyrics = modifiedLyrics.trim();
     return modifiedLyrics;
 };
