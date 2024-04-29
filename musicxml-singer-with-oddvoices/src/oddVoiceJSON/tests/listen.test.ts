@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createSplitOddVoiceJsonInputsFromMusicXml } from "..";
 import { parseXmlText } from "../../musicXmlParsing/xmlHelpers";
 
-import HIGH_AHHH_TEST from "./listen.musicxml?raw";
+import LISTEN_TEST from "./listen.musicxml?raw";
 
 const EXPECTED_EVENTS_VOICE_1 = [
     {
@@ -150,7 +150,7 @@ const EXPECTED_EVENTS_VOICE_1 = [
 
 describe("listen", () => {
     it("Generates the correct outputs for listen.musicxml", () => {
-        const outputs = createSplitOddVoiceJsonInputsFromMusicXml(parseXmlText(HIGH_AHHH_TEST));
+        const outputs = createSplitOddVoiceJsonInputsFromMusicXml(parseXmlText(LISTEN_TEST));
 
         expect(outputs.length).toBe(1);
 

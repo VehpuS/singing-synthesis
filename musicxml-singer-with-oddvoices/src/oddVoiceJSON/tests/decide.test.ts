@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createSplitOddVoiceJsonInputsFromMusicXml } from "..";
 import { parseXmlText } from "../../musicXmlParsing/xmlHelpers";
 
-import BELIEVE_TEST from "./believe.musicxml?raw";
+import DECIDE_TEST from "./decide.musicxml?raw";
 
 const EXPECTED_EVENTS_VOICE_1 = [
     {
@@ -239,27 +239,6 @@ const EXPECTED_EVENTS_VOICE_1 = [
     },
     {
         type: "noteOff",
-        time: 1.875,
-        frequency: 0,
-        formantShift: 1,
-        phonemeSpeed: 1,
-    },
-    {
-        type: "setTargetFrequency",
-        time: 1.875,
-        frequency: 493.8833012561241,
-        formantShift: 1,
-        phonemeSpeed: 1,
-    },
-    {
-        type: "noteOn",
-        time: 1.875,
-        frequency: 0,
-        formantShift: 1,
-        phonemeSpeed: 1,
-    },
-    {
-        type: "noteOff",
         time: 2,
         frequency: 0,
         formantShift: 1,
@@ -435,9 +414,9 @@ const EXPECTED_EVENTS_VOICE_1 = [
     },
 ];
 
-describe("believe", () => {
-    it("Generates the correct outputs for believe.musicxml", () => {
-        const outputs = createSplitOddVoiceJsonInputsFromMusicXml(parseXmlText(BELIEVE_TEST));
+describe("decide", () => {
+    it("Generates the correct outputs for decide.musicxml", () => {
+        const outputs = createSplitOddVoiceJsonInputsFromMusicXml(parseXmlText(DECIDE_TEST));
 
         expect(outputs.length).toBe(1);
 
@@ -453,7 +432,7 @@ describe("believe", () => {
         });
 
         expect(voice1.output.lyrics).toBe(
-            "Step from the road to the sea to the sky and I do be leave what we re ly on"
+            "Come to de side that the things that I tried were in my life just to get high on"
         );
 
         expect(voice1.output.events).toEqual(EXPECTED_EVENTS_VOICE_1);

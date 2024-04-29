@@ -53,7 +53,7 @@ describe("singleNoteFullMeasure", () => {
             numVoices: 1,
         });
 
-        expect(voice1.output.lyrics).toBe("ahh");
+        expect(voice1.output.lyrics).toBe("aah");
 
         expect(voice1.output.events).toEqual(EXPECTED_EVENTS_VOICE_1);
     });
