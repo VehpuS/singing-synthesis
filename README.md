@@ -1,13 +1,12 @@
 # Singing Synthesis Projects
 
+A collection of projects aimed at creating a music xml to vocalized synthesized audio process.
+
 TL;DR - jump to `musicxml-singer-with-oddvoices`.
 
 ## How I got here
 
-A collection of projects aimed at creating a music xml to vocalized synthesized audio process.
-
 This was done in 3 progressive projects:
-
 
 ### 1. Compiling sinsy (`synthesize_with_sinsy`)
 
@@ -26,7 +25,7 @@ Both of these adventures lead to the code in `musicxml_python_helpers`. While th
 
 ### 3. A Client Side WebApp for Vocal Synthesis (`musicxml-singer-with-oddvoices`)
 
-Having successfully built a music XML parser in Python and finding the [Oddvoices](https://gitlab.com/oddvoices/oddvoices/) project, I realized I could move the parsing logic to Typescript and create a newer frontend for Oddvoices which accepts music-xml as input and generates the split audio parts. This process is still ongoing, but I have successfully ran the first version of the webapp now and am commemorating it with this Readme :).
+Having successfully built a music XML parser in Python and finding the [Oddvoices](https://gitlab.com/oddvoices/oddvoices/) project, I realized I could move the parsing logic to Typescript and create a newer frontend for Oddvoices which accepts music-xml as input and generates the split audio parts.
 
 
 ## Unstructured notes for future features
