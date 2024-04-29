@@ -1,30 +1,17 @@
-# React + TypeScript + Vite
+# MusicXML Singer App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This app allows arrangers of choir music to generate synthesized voices based on MusicXML notation with lyrics. The app does not require a backend to run as it uses a web assembly core that is downloaded on runtime, called [Oddvoices](https://oddvoices.org/).
 
-Currently, two official plugins are available:
+## How to use the App?
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Upload a music XML file with singing voices (musical notation and lyrics) and an initial version of the voices will be generated. If the result is acceptable - great :). Otherwise, try changing the lyrics, and perhaps report the needed change as an issue if you thing this can be resolved in conversion. If you're still having trouble - please report an issue with your file or add a relevant pull request with a new test.
 
-## Expanding the ESLint configuration
+Conversion tests (with sample MusicXML files and their source MuseScore files) can be found in `musicxml-singer-with-oddvoices/src/oddVoiceJSON/tests`.
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+## How to run the App?
 
-- Configure the top-level `parserOptions` property like this:
+Either use the Github pages / netlify hosted version, or `git clone`, then `npm install` and run `npm run dev`. A local version of the app should run after installing submodules and compiling the c code into Web Assembly (you may need to install some local dependencies to make this work obviously - specifically `emcc` and `cmake`). You can use the github pages action for guidance if any of the dependency installations give you trouble.
 
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-  },
-}
-```
+## How to test the App
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+Run `npm test`. It will run both frontend rendering test and the conversion test suite using `vite-test`.
