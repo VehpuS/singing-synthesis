@@ -24,6 +24,11 @@ export const modifyLyricsForOddvoices = (lyrics: string): string => {
     modifiedLyrics = modifiedLyrics.replace(/Aa+/g, "Ah");
     modifiedLyrics = modifiedLyrics.replace(/aa+/g, "ah");
 
+    // Replace be lieve with be leave to help addvoices pronounce it correctly
+    modifiedLyrics = modifiedLyrics.replace(/be lieve/g, "be leave");
+    modifiedLyrics = modifiedLyrics.replace(/Be lieve/g, "be leave");
+    modifiedLyrics = modifiedLyrics.replace(/BE LIEVE/g, "be leave");
+
     modifiedLyrics = modifiedLyrics.trim();
     return modifiedLyrics;
 };
