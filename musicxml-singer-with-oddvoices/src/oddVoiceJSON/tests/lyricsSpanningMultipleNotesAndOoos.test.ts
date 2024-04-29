@@ -319,7 +319,7 @@ describe("lyricsSpanningMultipleNotesAndOoos", () => {
             numVoices: 1,
         });
 
-        expect(voice1.output.lyrics).toBe("Oo Youll be Youll be ol der too Ah");
+        expect(voice1.output.lyrics).toBe("Oo You'll be You'll be ol der too Ah");
 
         expect(voice1.output.events).toEqual(EXPECTED_EVENTS_VOICE_1);
     });

@@ -5,8 +5,8 @@ export const LETTERS_TO_CONSIDER_APPENDING = [...VOWELS_WITHOUT_Y, "h"];
 
 export const modifyLyricsForOddvoices = (lyrics: string): string => {
     let modifiedLyrics = lyrics;
-    // Remove all non-alphabetic characters except whitespace and hyphens
-    modifiedLyrics = modifiedLyrics.replace(/[^a-zA-Z\s-]/g, "");
+    // Remove all non-alphabetic characters except whitespace, hyphens and apostrophes
+    modifiedLyrics = modifiedLyrics.replace(/[^a-zA-Z\s-']/g, "");
 
     // Replace all hyphens with spaces
     modifiedLyrics = modifiedLyrics.replace(/-/g, " ");
