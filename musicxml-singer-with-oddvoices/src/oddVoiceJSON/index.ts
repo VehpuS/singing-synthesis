@@ -367,6 +367,13 @@ export const musicXMLToEvents = (
                             throw new Error(`Unexpected measure child: ${JSON.stringify(measureChild)}`);
                         }
 
+                        // Check for grace notes
+                        const graceEl = findChildByTagName(measureChild, "grace");
+                        if (graceEl) {
+                            console.log("Found grace note", { measureChild }, "skipping");
+                            return;
+                        }
+
                         // Extract lyrics
                         const latestVoiceLyricStartIndex = findLastIndex(
                             lyricsEvents,
