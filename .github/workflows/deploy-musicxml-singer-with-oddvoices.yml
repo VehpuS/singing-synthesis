@@ -107,13 +107,11 @@ jobs:
             - name: Setup Pages
               uses: actions/configure-pages@v3
             - name: Upload dist_no_links as artifact
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-pages-artifact@v3
               with:
-                  name: artifact
                   path: "./musicxml-singer-with-oddvoices/dist_no_links"
             - name: Deploy to GitHub Pages
               id: deployment
               uses: actions/deploy-pages@v4
               with:
                   token: ${{ secrets.GITHUB_TOKEN }}
-                  artifact_name: artifact
