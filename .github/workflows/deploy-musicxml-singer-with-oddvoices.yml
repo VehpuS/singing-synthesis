@@ -9,8 +9,8 @@ on:
             - "musicxml-singer-with-oddvoices/src/**"
             - "musicxml-singer-with-oddvoices/package.json"
             - "musicxml-singer-with-oddvoices/package-lock.json"
-            - "musicxml-singer-with-oddvoices/public"
-            - "musicxml-singer-with-oddvoices/voices"
+            - "musicxml-singer-with-oddvoices/public/**"
+            - "musicxml-singer-with-oddvoices/voices/**"
             - "musicxml-singer-with-oddvoices/.env.production"
             - "musicxml-singer-with-oddvoices/tsconfig.json"
             - "musicxml-singer-with-oddvoices/tsconfig.node.json"
@@ -73,6 +73,7 @@ jobs:
                   path: "./musicxml-singer-with-oddvoices/dist"
             - name: Deploy to GitHub Pages
               id: deployment
-              uses: actions/deploy-pages@v2
+              uses: actions/deploy-pages@v4
               with:
-                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  artifact-name: dist
