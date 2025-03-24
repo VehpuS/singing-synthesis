@@ -9,7 +9,7 @@
     "dev:skip-oddvoices": "vite",
     "test": "vitest",
     "build": "tsc && npm run build-oddvoices && vite build && cp -r ./voices ./dist/voices",
-    "build-github-pages": "tsc && VITE_BASE=singing-synthesis npm run build-oddvoices && vite build --base /singing-synthesis && mkdir -p ./dist/singing-synthesis && cp -r ./dist/*.* ./dist/singing-synthesis/ && cp -r ./dist/assets ./dist/singing-synthesis/ && rm -r ./dist/voices && cp -r ./voices ./dist/voices && cp -r ./dist/voices ./dist/singing-synthesis/voices",
+    "build-github-pages": "tsc && VITE_BASE=singing-synthesis npm run build-oddvoices && vite build --base /singing-synthesis && mkdir -p ./dist/singing-synthesis && cp -rL ./dist/*.* ./dist/singing-synthesis/ && cp -rL ./dist/assets ./dist/singing-synthesis/ && rm -r ./dist/voices && cp -rL ./voices ./dist/voices && cp -rL ./dist/voices ./dist/singing-synthesis/voices",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
