@@ -94,7 +94,7 @@ jobs:
             - name: Upload dist_no_links as artifact
               uses: actions/upload-artifact@v4
               with:
-                  name: dist_no_links_artifact
+                  name: artifact
                   path: "./musicxml-singer-with-oddvoices/dist_no_links"
             - name: Deploy to GitHub Pages
               id: deployment
