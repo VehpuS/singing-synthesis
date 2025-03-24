@@ -29,7 +29,7 @@ endif
 SED := sed $(SED_FLAGS)
 
 all:
-	emcc $(CFLAGS) --bind -o ../../../public/oddvoices_wasm.mjs $(ALL_CPP_INCLUDES) $(ALL_CPP_SOURCES) -s ASSERTIONS=1 -s ALLOW_MEMORY_GROWTH=1 -s ENVIRONMENT='web' -s USE_ES6_IMPORT_META=0 $(PRELOAD_FILES) -s EXPORTED_RUNTIME_METHODS='["ccall", "cwrap", "FS"]'
+	emcc $(CFLAGS) --bind -o ../../../public/oddvoices_wasm.mjs $(ALL_CPP_INCLUDES) $(ALL_CPP_SOURCES) -s ASSERTIONS=1 -s ALLOW_MEMORY_GROWTH=1 -s ENVIRONMENT='web' $(PRELOAD_FILES) -s EXPORTED_RUNTIME_METHODS='["ccall", "cwrap", "FS"]'
 	mkdir -p ../js  # Create the directory if it doesn't exist
 	# If used, add the vite.config.ts 'base' property to the generated oddvoices_wasm.mjs file as a prefix
 	@if [ $(VITE_BASE) ]; then\

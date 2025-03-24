@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build-oddvoices": "git submodule update --init --recursive; cd ./src/oddvoices; make -C cpp; cd ../../",
-    "dev": "npm run build-oddvoices; vite",
+    "dev": "npm run build-oddvoices && vite",
+    "dev:skip-oddvoices": "vite",
     "test": "vitest",
     "build": "tsc && npm run build-oddvoices && vite build && cp -r ./voices ./dist/voices",
     "build-github-pages": "tsc && VITE_BASE=singing-synthesis npm run build-oddvoices && vite build --base /singing-synthesis && mkdir -p ./dist/singing-synthesis && cp -r ./dist/*.* ./dist/singing-synthesis/ && cp -r ./dist/assets ./dist/singing-synthesis/ && rm -r ./dist/voices && cp -r ./voices ./dist/voices && cp -r ./dist/voices ./dist/singing-synthesis/voices",
