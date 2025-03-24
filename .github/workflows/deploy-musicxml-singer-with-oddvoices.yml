@@ -63,6 +63,12 @@ jobs:
                   fi
                   echo "Build directory exists and contains:"
                   ls -la ./dist
+            - name: Clean dist_no_links directory
+              working-directory: ./musicxml-singer-with-oddvoices
+              run: |
+                  if [ -d "./dist_no_links" ]; then
+                    rm -rf ./dist_no_links
+                  fi
             - name: Create copy without symlinks or hard links
               working-directory: ./musicxml-singer-with-oddvoices
               run: rsync -aL dist/ dist_no_links/
@@ -88,7 +94,16 @@ jobs:
                   fi
             - name: Check directory size
               working-directory: ./musicxml-singer-with-oddvoices
-              run: du -sh dist_no_links
+              run: |
+                  size=$(du -sh dist_no_links | cut -f1)
+                  echo "Directory size: $size"
+                  if [ "$(du -s dist_no_links | cut -f1)" -gt 10485760 ]; then
+                    echo "Directory size exceeds 10GB!"
+                    exit 1
+                  else
+                    echo "Directory size is within limit."
+                  fi
+                  du -sh dist_no_links
             - name: Setup Pages
               uses: actions/configure-pages@v3
             - name: Upload dist_no_links as artifact
