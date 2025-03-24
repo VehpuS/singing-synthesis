@@ -63,17 +63,20 @@ jobs:
                   fi
                   echo "Build directory exists and contains:"
                   ls -la ./dist
+            - name: Create copy without symlinks or hard links
+              working-directory: ./musicxml-singer-with-oddvoices
+              run: rsync -aL dist/ dist_no_links/
             - name: Setup Pages
               uses: actions/configure-pages@v3
             - name: Upload artifact
               uses: actions/upload-artifact@v4
               with:
                   # Upload dist repository
-                  name: dist
-                  path: "./musicxml-singer-with-oddvoices/dist"
+                  name: artifact
+                  path: "./musicxml-singer-with-oddvoices/dist_no_links"
             - name: Deploy to GitHub Pages
               id: deployment
               uses: actions/deploy-pages@v4
               with:
                   token: ${{ secrets.GITHUB_TOKEN }}
-                  artifact_name: dist
+                  artifact_name: artifact
