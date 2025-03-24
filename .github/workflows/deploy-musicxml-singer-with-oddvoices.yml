@@ -53,6 +53,15 @@ jobs:
             - name: Build
               working-directory: ./musicxml-singer-with-oddvoices
               run: npm run build-github-pages
+            - name: Verify Build Output
+              working-directory: ./musicxml-singer-with-oddvoices
+              run: |
+                  if [ ! -d "./dist" ]; then
+                    echo "Build directory not found!"
+                    exit 1
+                  fi
+                  echo "Build directory exists and contains:"
+                  ls -la ./dist
             - name: Setup Pages
               uses: actions/configure-pages@v3
             - name: Upload artifact
