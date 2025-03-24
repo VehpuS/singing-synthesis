@@ -5,6 +5,7 @@ on:
     push:
         branches: ["main"]
         paths:
+            - ".github/workflows/deploy-musicxml-singer-with-oddvoices.yml"
             - "musicxml-singer-with-oddvoices/src/**"
             - "musicxml-singer-with-oddvoices/package.json"
             - "musicxml-singer-with-oddvoices/package-lock.json"
@@ -73,3 +74,5 @@ jobs:
             - name: Deploy to GitHub Pages
               id: deployment
               uses: actions/deploy-pages@v2
+              with:
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
