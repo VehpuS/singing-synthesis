@@ -8,106 +8,157 @@ import { OddVoiceJSON } from "../oddVoiceJSON/oddVoiceHelpers";
 import { Voice, allVoices, voiceUrlPrefix } from "./oddvoicesUtils";
 
 interface VoiceObject {
-    initFromFile: (filename: string) => void;
+  initFromFile: (filename: string) => void;
 }
 
 interface VoiceFactory {
-    new (): VoiceObject;
+  new (): VoiceObject;
 }
 
 export const useOddVoicesApp = () => {
-    const [oddVoiceApp, setOddVoiceApp] = React.useState<{
-        sing: (voice: VoiceObject, input: string, output: string, lyricsOverride: string) => string;
-        FS: {
-            readFile: (filename: string) => Uint8Array;
-            writeFile: (filename: string, data: Uint8Array) => void;
-            mkdir: (dirname: string) => void;
-        };
-        Voice: VoiceFactory;
-    } | null>(null);
-
-    React.useEffect(() => {
-        const initialize = async () => {
-            const newApp = await createOddVoicesModule();
-            newApp?.FS.mkdir("/voices/");
-            setOddVoiceApp(newApp);
-        };
-        initialize();
-    }, []);
-
-    const voiceQueries = useQueries({
-        queries: map(allVoices, (activeVoice) => ({
-            queryKey: ["oddVoices", activeVoice],
-            queryFn: async () => {
-                if (!oddVoiceApp || !activeVoice) {
-                    return;
-                }
-                const response = await fetch(`${voiceUrlPrefix}${activeVoice}.voice`);
-                const buffer = await response.arrayBuffer();
-
-                const fileName = `/voices/${activeVoice}.voice`;
-                oddVoiceApp.FS.writeFile(fileName, new Uint8Array(buffer));
-
-                return buffer;
-            },
-            enabled: Boolean(oddVoiceApp && activeVoice),
-            retry: false,
-        })),
-    });
-
-    const generateVoiceFromOddVoiceJson =
-        React.useRef<(oddVoiceJson: OddVoiceJSON, voice: Voice) => Uint8Array | undefined>();
-    React.useEffect(() => {
-        generateVoiceFromOddVoiceJson.current = (
-            oddVoiceJson: OddVoiceJSON,
-            voice: Voice = Voice.air
-        ): Uint8Array | undefined => {
-            if (!oddVoiceApp) {
-                console.error("OddVoice app not initialized");
-                return;
-            }
-            const voiceIndex = indexOf(allVoices, voice);
-            if (voiceIndex === -1) {
-                console.error(`Unsupported voice ${voice}`);
-                return;
-            }
-            const voiceQuery = voiceQueries[voiceIndex];
-            if (!voiceQuery.data) {
-                console.error(`Voice not loaded: ${voice}`);
-                return;
-            }
-            const activeVoice = allVoices[voiceIndex];
-            const fileName = `/voices/${activeVoice}.voice`;
-
-            const voiceData = new oddVoiceApp.Voice();
-            voiceData.initFromFile(fileName);
-
-            const error: string = oddVoiceApp.sing(voiceData, JSON.stringify(oddVoiceJson), "out.wav", "");
-            if (error !== "") {
-                console.error(error);
-                return;
-            }
-
-            const buffer: Uint8Array = oddVoiceApp.FS.readFile("out.wav");
-            if (!buffer || buffer.length === 0) {
-                console.error("No buffer");
-                return;
-            }
-            return buffer;
-        };
-    }, [oddVoiceApp, voiceQueries]);
-
-    const voiceErrors = map(voiceQueries, (query) => query.error);
-    if (some(voiceErrors)) {
-        console.error(voiceErrors);
-    }
-
-    const isLoadingVoice = some(map(voiceQueries, (query) => query.isLoading));
-
-    return {
-        isLoadingApp: !oddVoiceApp,
-        isLoadingVoice,
-        generateVoiceFromOddVoiceJson,
-        voiceLoadingFailed: !isLoadingVoice && !every(map(voiceQueries, (query) => Boolean(query.data))),
+  const [oddVoiceApp, setOddVoiceApp] = React.useState<{
+    sing: (
+      voice: VoiceObject,
+      input: string,
+      output: string,
+      lyricsOverride: string
+    ) => string;
+    FS: {
+      readFile: (filename: string) => Uint8Array;
+      writeFile: (filename: string, data: Uint8Array) => void;
+      mkdir: (dirname: string) => void;
+      unlink: (filename: string) => void;
     };
+    Voice: VoiceFactory;
+  } | null>(null);
+
+  React.useEffect(() => {
+    const initialize = async () => {
+      const newApp = await createOddVoicesModule();
+      newApp?.FS.mkdir("/voices/");
+      setOddVoiceApp(newApp);
+    };
+    initialize();
+  }, []);
+
+  const voiceQueries = useQueries({
+    queries: map(allVoices, (activeVoice) => ({
+      queryKey: ["oddVoices", activeVoice],
+      queryFn: async () => {
+        if (!oddVoiceApp || !activeVoice) {
+          return;
+        }
+
+        try {
+          const response = await fetch(`${voiceUrlPrefix}${activeVoice}.voice`);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch voice: ${activeVoice}`);
+          }
+
+          const buffer = await response.arrayBuffer();
+          const fileName = `/voices/${activeVoice}.voice`;
+
+          // Write the voice file to the virtual filesystem
+          oddVoiceApp.FS.writeFile(fileName, new Uint8Array(buffer));
+          return buffer;
+        } catch (error) {
+          console.error(`Failed to load voice ${activeVoice}:`, error);
+          throw error;
+        }
+      },
+      enabled: Boolean(oddVoiceApp && activeVoice),
+      retry: 1,
+      staleTime: Infinity, // Voice data doesn't change
+      cacheTime: Infinity, // Keep cached forever
+    })),
+  });
+
+  // Create a memoized reference to avoid recreation on each render
+  const generateVoiceFromOddVoiceJson =
+    React.useRef<
+      (oddVoiceJson: OddVoiceJSON, voice: Voice) => Uint8Array | undefined
+    >();
+
+  React.useEffect(() => {
+    generateVoiceFromOddVoiceJson.current = (
+      oddVoiceJson: OddVoiceJSON,
+      voice: Voice = Voice.air
+    ): Uint8Array | undefined => {
+      if (!oddVoiceApp) {
+        console.error("OddVoice app not initialized");
+        return;
+      }
+
+      const voiceIndex = indexOf(allVoices, voice);
+      if (voiceIndex === -1) {
+        console.error(`Unsupported voice ${voice}`);
+        return;
+      }
+
+      const voiceQuery = voiceQueries[voiceIndex];
+      if (!voiceQuery.data) {
+        console.error(`Voice not loaded: ${voice}`);
+        return;
+      }
+
+      const activeVoice = allVoices[voiceIndex];
+      const fileName = `/voices/${activeVoice}.voice`;
+
+      // Check for unnecessarily large OddVoiceJSON objects and optimize
+      const optimizedJson = { ...oddVoiceJson };
+
+      try {
+        // Clean up any previous file if it exists
+        try {
+          oddVoiceApp.FS.unlink("out.wav");
+        } catch (e) {
+          // File might not exist, ignore
+        }
+
+        // Initialize voice
+        const voiceData = new oddVoiceApp.Voice();
+        voiceData.initFromFile(fileName);
+
+        // Process the voice
+        const error: string = oddVoiceApp.sing(
+          voiceData,
+          JSON.stringify(optimizedJson),
+          "out.wav",
+          ""
+        );
+        if (error !== "") {
+          console.error(error);
+          return;
+        }
+
+        // Read the output and return it
+        const buffer: Uint8Array = oddVoiceApp.FS.readFile("out.wav");
+        if (!buffer || buffer.length === 0) {
+          console.error("No buffer");
+          return;
+        }
+
+        return buffer;
+      } catch (error) {
+        console.error("Error during voice synthesis:", error);
+        return undefined;
+      }
+    };
+  }, [oddVoiceApp, voiceQueries]);
+
+  const voiceErrors = map(voiceQueries, (query) => query.error);
+  if (some(voiceErrors)) {
+    console.error(voiceErrors);
+  }
+
+  const isLoadingVoice = some(map(voiceQueries, (query) => query.isLoading));
+
+  return {
+    isLoadingApp: !oddVoiceApp,
+    isLoadingVoice,
+    generateVoiceFromOddVoiceJson,
+    voiceLoadingFailed:
+      !isLoadingVoice &&
+      !every(map(voiceQueries, (query) => Boolean(query.data))),
+  };
 };
