@@ -67,7 +67,7 @@ export const useOddVoicesApp = () => {
         }
       },
       enabled: Boolean(oddVoiceApp && activeVoice),
-      retry: 1,
+      retry: false,
       staleTime: Infinity, // Voice data doesn't change
       cacheTime: Infinity, // Keep cached forever
     })),
@@ -104,9 +104,6 @@ export const useOddVoicesApp = () => {
       const activeVoice = allVoices[voiceIndex];
       const fileName = `/voices/${activeVoice}.voice`;
 
-      // Check for unnecessarily large OddVoiceJSON objects and optimize
-      const optimizedJson = { ...oddVoiceJson };
-
       try {
         // Clean up any previous file if it exists
         try {
@@ -122,7 +119,7 @@ export const useOddVoicesApp = () => {
         // Process the voice
         const error: string = oddVoiceApp.sing(
           voiceData,
-          JSON.stringify(optimizedJson),
+          JSON.stringify(oddVoiceJson),
           "out.wav",
           ""
         );

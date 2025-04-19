@@ -1,5 +1,5 @@
 import React from "react";
-import { every, forEach, isEmpty, isEqual, map, size } from "lodash";
+import { forEach, isEmpty, isEqual, map, size } from "lodash";
 import {
   Accordion,
   AccordionDetails,
@@ -19,14 +19,14 @@ import { MediaControls } from "../MediaControls";
 import { UploadButton } from "../UploadButton";
 import { LicenseFooter } from "../LicenseFooter";
 import { Part } from "../Part";
-import { WorkerControls } from "../WorkerControls";
 import { createSplitOddVoiceJsonInputsFromMusicXml } from "../../oddVoiceJSON";
-import { parseXmlText } from "../../musicXmlParsing/xmlHelpers";
 import { useGenerateAudio } from "./useGenerateAudio";
-import { useXmlProcessingWorker } from "../../workers/useXmlProcessingWorker";
 import { Voice } from "../../oddvoices/oddvoicesUtils";
 
 import "./App.css";
+import { parseXmlText } from "../../musicXmlParsing/xmlHelpers";
+import { useXmlProcessingWorker } from "../../workers/useXmlProcessingWorker";
+import { WorkerControls } from "../WorkerControls";
 
 function App() {
   const [rawFile, setRawFile] = React.useState<string>("");
@@ -41,21 +41,21 @@ function App() {
     isLoadingVoice,
     voiceLoadingFailed,
     resetAudioOutputs,
-    queueAudioGeneration,
+    generateAudioForPart,
+    generateAudioForAllParts,
+    isGeneratingAudio,
     useWorker: useVoiceWorker,
     toggleWorkerMode: toggleVoiceWorkerMode,
     isWorkerReady: isVoiceWorkerReady,
-    workerError: voiceWorkerError,
   } = useGenerateAudio();
 
   const {
     processXml,
     isReady: isXmlWorkerReady,
-    isProcessing: isXmlProcessing,
     error: xmlWorkerError,
   } = useXmlProcessingWorker();
 
-  const [useXmlWorker, setUseXmlWorker] = React.useState(true);
+  const [useXmlWorker, setUseXmlWorker] = React.useState(false);
   const [isProcessingXml, setIsProcessingXml] = React.useState(false);
 
   const toggleXmlWorkerMode = React.useCallback(() => {
@@ -121,27 +121,44 @@ function App() {
       );
       const isNewVoice =
         (previousCustomVoicePerPart.current?.[i] ?? Voice.air) !== partVoice;
-
       if (oddVoiceJson && (isNewPart || isNewJson || isNewVoice)) {
         partsToGenerate.push(i);
       }
     });
 
     if (!isEmpty(partsToGenerate)) {
-      startTransition(() => {
-        forEach(partsToGenerate, (i) => {
-          const oddVoiceJson = oddVoiceOutputs[i]?.output;
-          const partVoice = customVoicePerPart?.[i] ?? Voice.air;
-          if (oddVoiceJson) {
-            queueAudioGeneration(oddVoiceJson, i, partVoice);
-          }
+      if (size(partsToGenerate) === size(oddVoiceOutputs)) {
+        startTransition(() => {
+          generateAudioForAllParts(
+            map(partsToGenerate, (i) => ({
+              oddVoiceJson: oddVoiceOutputs[i]?.output,
+              voice: customVoicePerPart?.[i] ?? Voice.air,
+            }))
+          );
         });
-      });
+      } else {
+        map(partsToGenerate, (i) => {
+          startTransition(() => {
+            generateAudioForPart(
+              oddVoiceOutputs[i]?.output,
+              i,
+              customVoicePerPart?.[i] ?? Voice.air
+            );
+          });
+        });
+      }
     }
 
-    previousOddVoiceOutputs.current = [...oddVoiceOutputs];
+    previousOddVoiceOutputs.current = { ...oddVoiceOutputs };
     previousCustomVoicePerPart.current = [...customVoicePerPart];
-  }, [oddVoiceOutputs, customVoicePerPart, audioOutputs, queueAudioGeneration]);
+  }, [
+    startTransition,
+    generateAudioForPart,
+    generateAudioForAllParts,
+    audioOutputs,
+    customVoicePerPart,
+    oddVoiceOutputs,
+  ]);
 
   return (
     <Paper
@@ -172,7 +189,7 @@ function App() {
                 <ErrorIcon />
                 Error loading voice!
               </>
-            ) : !every(audioOutputs) ? (
+            ) : isGeneratingAudio ? (
               <>
                 <CircularProgress size={16} /> Generating audio...
               </>
@@ -221,26 +238,12 @@ function App() {
             >
               <UploadButton
                 isLoadingVoice={isLoadingVoice}
-                setOddVoiceOutputs={setOddVoiceOutputs}
-                resetAudioOutputs={resetAudioOutputs}
                 setRawFile={setRawFile}
               />
               {size(audioOutputs) > 0 && <MediaControls />}
             </Paper>
           </Grid>
-          
-          <Grid item mt={2}>
-            <WorkerControls
-              useXmlWorker={useXmlWorker}
-              useVoiceWorker={useVoiceWorker}
-              toggleXmlWorkerMode={toggleXmlWorkerMode}
-              toggleVoiceWorkerMode={toggleVoiceWorkerMode}
-              isXmlWorkerReady={isXmlWorkerReady}
-              isVoiceWorkerReady={isVoiceWorkerReady}
-              xmlWorkerError={xmlWorkerError}
-            />
-          </Grid>
-          
+
           <Divider />
           <Grid
             container
@@ -278,13 +281,7 @@ function App() {
         </>
       )}
 
-      <Grid
-        container
-        direction="column"
-        gap={3}
-        alignItems="center"
-        paddingBlock={2}
-      >
+      <Grid container direction="column" gap={3} alignItems="center">
         <Accordion>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="h6">About Oddvoices</Typography>
@@ -296,6 +293,21 @@ function App() {
       </Grid>
       <Divider />
       <LicenseFooter />
+      <Divider />
+
+      {import.meta.env.MODE === "development" && (
+        <Grid item mt={2}>
+          <WorkerControls
+            useXmlWorker={useXmlWorker}
+            useVoiceWorker={useVoiceWorker}
+            toggleXmlWorkerMode={toggleXmlWorkerMode}
+            toggleVoiceWorkerMode={toggleVoiceWorkerMode}
+            isXmlWorkerReady={isXmlWorkerReady}
+            isVoiceWorkerReady={isVoiceWorkerReady}
+            xmlWorkerError={xmlWorkerError}
+          />
+        </Grid>
+      )}
     </Paper>
   );
 }

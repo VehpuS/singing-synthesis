@@ -1,5 +1,14 @@
-import React from 'react';
-import { FormControlLabel, Switch, Grid, Typography, Paper, Tooltip } from '@mui/material';
+import React from "react";
+import {
+  FormControlLabel,
+  Switch,
+  Typography,
+  Tooltip,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 interface WorkerControlsProps {
   useXmlWorker: boolean;
@@ -18,16 +27,23 @@ export const WorkerControls: React.FC<WorkerControlsProps> = ({
   toggleVoiceWorkerMode,
   isXmlWorkerReady,
   isVoiceWorkerReady,
-  xmlWorkerError
+  xmlWorkerError,
 }) => {
   return (
-    <Paper elevation={0} sx={{ padding: 1, border: theme => `1px solid ${theme.palette.divider}` }}>
-      <Grid container direction="column" gap={1}>
-        <Typography variant="subtitle2" fontWeight="bold">Worker Settings</Typography>
-        
-        <Tooltip title={isXmlWorkerReady ? 
-          "Process MusicXML files in a background thread to prevent UI freezing" : 
-          "XML worker is initializing or unavailable"}>
+    <Accordion disableGutters>
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Typography variant="subtitle2" fontWeight="bold">
+          Worker Settings (Experimental)
+        </Typography>
+      </AccordionSummary>
+      <AccordionDetails>
+        <Tooltip
+          title={
+            isXmlWorkerReady
+              ? "Process MusicXML files in a background thread to prevent UI freezing"
+              : "XML worker is initializing or unavailable"
+          }
+        >
           <FormControlLabel
             control={
               <Switch
@@ -45,10 +61,14 @@ export const WorkerControls: React.FC<WorkerControlsProps> = ({
             }
           />
         </Tooltip>
-        
-        <Tooltip title={isVoiceWorkerReady ? 
-          "Generate voices in a background thread to prevent UI freezing" : 
-          "Voice worker is initializing or unavailable"}>
+
+        <Tooltip
+          title={
+            isVoiceWorkerReady
+              ? "Generate voices in a background thread to prevent UI freezing"
+              : "Voice worker is initializing or unavailable"
+          }
+        >
           <FormControlLabel
             control={
               <Switch
@@ -66,13 +86,13 @@ export const WorkerControls: React.FC<WorkerControlsProps> = ({
             }
           />
         </Tooltip>
-        
+
         {xmlWorkerError && (
           <Typography variant="caption" color="error">
             Error: {xmlWorkerError}
           </Typography>
         )}
-      </Grid>
-    </Paper>
+      </AccordionDetails>
+    </Accordion>
   );
 };

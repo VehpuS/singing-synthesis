@@ -31,8 +31,15 @@ concurrency:
     cancel-in-progress: true
 
 jobs:
+    # Run tests before deployment
+    run-tests:
+        uses: ./.github/workflows/ci.yml
+        
     # Single deploy job since we're just deploying
     deploy:
+        # Make deployment depend on successful completion of the CI workflow
+        needs: run-tests
+
         environment:
             name: github-pages
             url: ${{ steps.deployment.outputs.page_url }}

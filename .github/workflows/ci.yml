@@ -1,0 +1,38 @@
+name: Run Unit Tests
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "musicxml-singer-with-oddvoices/src/**"
+      - "musicxml-singer-with-oddvoices/package.json"
+      - "musicxml-singer-with-oddvoices/package-lock.json"
+      - "musicxml-singer-with-oddvoices/tsconfig.json"
+      - "musicxml-singer-with-oddvoices/tsconfig.node.json"
+      - "musicxml-singer-with-oddvoices/vite.config.js"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    branches: ["main"]
+  # Allow this workflow to be called by other workflows
+  workflow_call:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: "npm"
+          cache-dependency-path: "musicxml-singer-with-oddvoices/package-lock.json"
+      - name: Install dependencies
+        working-directory: ./musicxml-singer-with-oddvoices
+        run: npm install
+      - name: Run unit tests
+        working-directory: ./musicxml-singer-with-oddvoices
+        run: npm test
