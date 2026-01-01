@@ -4,6 +4,10 @@ A collection of projects aimed at creating a music xml to vocalized synthesized 
 
 TL;DR - jump to `musicxml-singer-with-oddvoices`.
 
+## AI/automation quickstart
+
+See `docs/AI_WORKFLOW.md` for an AI-focused delivery playbook and `scripts/ai-dev-checks.sh` for a one-liner that runs linting and tests (skipping the known failing grace-note test by default).
+
 ## How I got here
 
 This was done in 3 progressive projects:
