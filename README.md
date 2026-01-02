@@ -6,7 +6,7 @@ TL;DR - jump to `musicxml-singer-with-oddvoices`.
 
 ## AI/automation quickstart
 
-See `docs/AI_WORKFLOW.md` for an AI-focused delivery playbook, `scripts/ai-dev-checks.sh` for a one-liner that runs linting and tests (skipping the known failing grace-note test by default), and `copilot-instructions.md` for repository-specific Copilot guidance.
+See `docs/AI_WORKFLOW.md` for an AI-focused delivery playbook, `scripts/ai-dev-checks.sh` for a one-liner that runs linting and tests, `BRANCH_TODOS.md` for current known failures, and `copilot-instructions.md` for repository-specific Copilot guidance.
 
 ## How I got here
 

@@ -6,7 +6,7 @@ Context to provide:
 
 How to work:
 - Start changes inside `musicxml-singer-with-oddvoices`; use `npm run dev:skip-oddvoices` for UI-only edits to avoid rebuilding WASM.
-- Use `scripts/ai-dev-checks.sh` for quick validation. By default it runs lint + vitest but skips the known failing `src/oddVoiceJSON/tests/graceNote.test.ts`. Set `RUN_ALL_TESTS=1` to include it.
+- Use `scripts/ai-dev-checks.sh` for quick validation. By default it runs lint + vitest; set `RUN_ALL_TESTS=1` to include all tests (see `BRANCH_TODOS.md` for current failures).
 - If touching Oddvoices sources, run `git submodule update --init --recursive` first, then `npm run build-oddvoices`.
 - Keep changes small and scoped; avoid committing build artifacts (`dist`, `voices`, `test_outputs/`).
 

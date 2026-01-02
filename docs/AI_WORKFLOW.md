@@ -15,7 +15,7 @@ This guide is aimed at AI agents and maintainers who want a fast way to understa
 ## Validations to run
 - Recommended automation entrypoint: `./scripts/ai-dev-checks.sh`
   - Set `SKIP_INSTALL=1` to avoid reinstalling packages on CI.
-  - Set `RUN_ALL_TESTS=1` to include the currently failing `src/oddVoiceJSON/tests/graceNote.test.ts` (reproduced via `npm test` on 2026-01-01 with an extra array nesting in the expected events assertion).
+  - Set `RUN_ALL_TESTS=1` to include all tests (see `BRANCH_TODOS.md` for known failures).
 - Manual equivalents (from `musicxml-singer-with-oddvoices`):
   - Lint: `npm run lint`
   - Tests: `npm test` (Vitest; see note above about the failing grace note test)
