@@ -5,3 +5,4 @@ tmp
 .venv
 test_outputs/
 .DS_Store
+NNSVS-proof-of-concept/streamlit_app/models/

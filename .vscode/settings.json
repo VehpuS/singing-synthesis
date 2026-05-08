@@ -1,7 +1,6 @@
 {
-    "python.analysis.typeCheckingMode": "basic",
-    "cSpell.words": [
-        "Partwise",
-        "unpitched"
-    ]
+  "python.analysis.typeCheckingMode": "basic",
+  "cSpell.words": ["Partwise", "unpitched"],
+  "python-envs.defaultEnvManager": "ms-python.python:conda",
+  "python-envs.defaultPackageManager": "ms-python.python:conda"
 }
