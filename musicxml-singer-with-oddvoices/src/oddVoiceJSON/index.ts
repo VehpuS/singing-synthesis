@@ -9,6 +9,7 @@ import {
     flatMap,
     forEach,
     includes,
+    isNumber,
     last,
     map,
     pick,
@@ -704,6 +705,7 @@ export const generateOddVoiceJsonForSplit = ({
 }): OddVoiceJSON => {
     const partJson: OddVoiceJSON = { lyrics: "", events: [] };
 
+    // Filter only events relevant to this split
     const splitNoteEvents = filter(
         noteEvents,
         (e) =>
@@ -711,63 +713,91 @@ export const generateOddVoiceJsonForSplit = ({
             e.voice === splitParams.voice &&
             e.chordLevel === splitParams.chordLevel
     );
-
+    
+    // Process lyrics first
     partJson.lyrics = modifyLyricsForOddvoices(
         map(reject(splitNoteEvents, "isRest"), (e) => e.lyrics ?? "")
             .join("")
             .trim()
     );
-    partJson.events = flatMap(splitNoteEvents, (noteEvent, noteEventIdx) => {
+    
+    // Optimize event generation by skipping unnecessary events
+    let lastFrequency = 0;
+    let inRestSection = false;
+    
+    // Map through events and generate OddVoice events
+    for (let i = 0; i < splitNoteEvents.length; i++) {
+        const noteEvent = splitNoteEvents[i];
         const { time, frequency, lyricsChanged, isStaccato, eventSeconds, isRest } = noteEvent;
-        const newEvents = [];
-        if (isRest) {
-            newEvents.push(
+        
+        // Transition from non-rest to rest
+        if (isRest && !inRestSection) {
+            partJson.events.push(
                 createdOddVoiceJSONEvent({
                     eventType: EventType.NoteOff,
                     time,
                 })
             );
-            newEvents.push(
+            partJson.events.push(
                 createdOddVoiceJSONEvent({
                     eventType: EventType.Empty,
                     time,
                 })
             );
-        } else {
+            inRestSection = true;
+            continue;
+        }
+        
+        // Skip if we're in a rest section and this is also a rest
+        if (isRest && inRestSection) {
+            continue;
+        }
+        
+        // Coming out of a rest section or changing notes
+        if (!isRest) {
+            // End any rest section
+            inRestSection = false;
+            
+            // For lyrics changes, add a note off event first
             if (lyricsChanged) {
-                // Add a note off event before the new lyrics
-                console.log("Found new lyrics");
-                newEvents.push(
+                partJson.events.push(
                     createdOddVoiceJSONEvent({
                         eventType: EventType.NoteOff,
                         time,
                     })
                 );
             }
-            newEvents.push(
-                createdOddVoiceJSONEvent({
-                    eventType: EventType.SetTargetFrequency,
-                    time,
-                    frequency,
-                })
-            );
+            
+            // Only add frequency events when the frequency changes
+            if (lastFrequency !== frequency && isNumber(frequency)) {
+                partJson.events.push(
+                    createdOddVoiceJSONEvent({
+                        eventType: EventType.SetTargetFrequency,
+                        time,
+                        frequency,
+                    })
+                );
+                lastFrequency = frequency;
+            }
+            
             if (lyricsChanged) {
-                newEvents.push(
+                partJson.events.push(
                     createdOddVoiceJSONEvent({
                         eventType: EventType.NoteOn,
                         time,
                     })
                 );
 
+                // Handle staccato notes
                 if (isStaccato) {
-                    newEvents.push(
+                    partJson.events.push(
                         createdOddVoiceJSONEvent({
                             eventType: EventType.SetPhonemeSpeed,
                             time,
                             phonemeSpeed: 1.5,
                         })
                     );
-                    newEvents.push(
+                    partJson.events.push(
                         createdOddVoiceJSONEvent({
                             eventType: EventType.SetPhonemeSpeed,
                             time: time + (eventSeconds ?? 0),
@@ -777,22 +807,17 @@ export const generateOddVoiceJsonForSplit = ({
                 }
             }
         }
+    }
 
-        console.log({ noteEvent, noteEventIdx, newEvents });
-
-        return newEvents;
-    });
-
+    // Ensure the last note is properly turned off
     const lastEvent = last(splitNoteEvents);
-    if (lastEvent) {
-        if (!lastEvent.isRest) {
-            partJson.events.push(
-                createdOddVoiceJSONEvent({
-                    eventType: EventType.NoteOff,
-                    time: lastEvent.time + (lastEvent.eventSeconds ?? 0),
-                })
-            );
-        }
+    if (lastEvent && !lastEvent.isRest && lastEvent.eventSeconds) {
+        partJson.events.push(
+            createdOddVoiceJSONEvent({
+                eventType: EventType.NoteOff,
+                time: lastEvent.time + lastEvent.eventSeconds,
+            })
+        );
     }
 
     return partJson;

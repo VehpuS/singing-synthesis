@@ -99,13 +99,6 @@ const EXPECTED_EVENTS_VOICE_1 = [
     },
     {
         type: "setTargetFrequency",
-        time: 4,
-        frequency: 739.9888454232689,
-        formantShift: 1,
-        phonemeSpeed: 1,
-    },
-    {
-        type: "setTargetFrequency",
         time: 5,
         frequency: 987.7666025122483,
         formantShift: 1,
@@ -126,13 +119,6 @@ const EXPECTED_EVENTS_VOICE_1 = [
         phonemeSpeed: 1,
     },
     {
-        type: "setTargetFrequency",
-        time: 8,
-        frequency: 830.6093951598903,
-        formantShift: 1,
-        phonemeSpeed: 1,
-    },
-    {
         type: "noteOff",
         time: 10,
         frequency: 0,
@@ -150,13 +136,6 @@ const EXPECTED_EVENTS_VOICE_1 = [
         type: "noteOn",
         time: 10,
         frequency: 0,
-        formantShift: 1,
-        phonemeSpeed: 1,
-    },
-    {
-        type: "setTargetFrequency",
-        time: 12,
-        frequency: 880,
         formantShift: 1,
         phonemeSpeed: 1,
     },
@@ -175,19 +154,13 @@ const EXPECTED_EVENTS_VOICE_1 = [
         phonemeSpeed: 1,
     },
     {
-        type: "setTargetFrequency",
-        time: 16,
-        frequency: 830.6093951598903,
-        formantShift: 1,
-        phonemeSpeed: 1,
-    },
-    {
         type: "noteOff",
         time: 18,
         frequency: 0,
         formantShift: 1,
         phonemeSpeed: 1,
     },
+
     {
         type: "setTargetFrequency",
         time: 18,
@@ -199,13 +172,6 @@ const EXPECTED_EVENTS_VOICE_1 = [
         type: "noteOn",
         time: 18,
         frequency: 0,
-        formantShift: 1,
-        phonemeSpeed: 1,
-    },
-    {
-        type: "setTargetFrequency",
-        time: 20,
-        frequency: 739.9888454232689,
         formantShift: 1,
         phonemeSpeed: 1,
     },
@@ -224,13 +190,6 @@ const EXPECTED_EVENTS_VOICE_1 = [
         phonemeSpeed: 1,
     },
     {
-        type: "setTargetFrequency",
-        time: 24,
-        frequency: 659.2551138257398,
-        formantShift: 1,
-        phonemeSpeed: 1,
-    },
-    {
         type: "noteOff",
         time: 26,
         frequency: 0,
@@ -253,13 +212,6 @@ const EXPECTED_EVENTS_VOICE_1 = [
     },
     {
         type: "setTargetFrequency",
-        time: 28,
-        frequency: 739.9888454232689,
-        formantShift: 1,
-        phonemeSpeed: 1,
-    },
-    {
-        type: "setTargetFrequency",
         time: 30,
         frequency: 1108.7305239074883,
         formantShift: 1,
@@ -268,13 +220,6 @@ const EXPECTED_EVENTS_VOICE_1 = [
     {
         type: "setTargetFrequency",
         time: 30.5,
-        frequency: 987.7666025122483,
-        formantShift: 1,
-        phonemeSpeed: 1,
-    },
-    {
-        type: "setTargetFrequency",
-        time: 32,
         frequency: 987.7666025122483,
         formantShift: 1,
         phonemeSpeed: 1,

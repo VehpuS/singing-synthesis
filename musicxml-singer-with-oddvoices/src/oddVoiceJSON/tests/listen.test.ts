@@ -35,13 +35,6 @@ const EXPECTED_EVENTS_VOICE_1 = [
         phonemeSpeed: 1,
     },
     {
-        type: "setTargetFrequency",
-        time: 0.5,
-        frequency: 622.2539674441618,
-        formantShift: 1,
-        phonemeSpeed: 1,
-    },
-    {
         type: "noteOn",
         time: 0.5,
         frequency: 0,
@@ -73,13 +66,6 @@ const EXPECTED_EVENTS_VOICE_1 = [
         type: "noteOff",
         time: 1.5,
         frequency: 0,
-        formantShift: 1,
-        phonemeSpeed: 1,
-    },
-    {
-        type: "setTargetFrequency",
-        time: 1.5,
-        frequency: 493.8833012561241,
         formantShift: 1,
         phonemeSpeed: 1,
     },
